@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cacau Show - Entregas</title>
+    <link rel="manifest" href="data:application/json,{}">
+    <style>
+        :root {
+            --marrom: #352727;
+            --dourado: #BF9D16;
+            --creme: #F5F2EB;
+            --marrom-escuro: #1f1616;
+            --marrom-claro: #4a3838;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--marrom); color: var(--creme); min-height: 100vh; padding: 10px; }
+        .container { max-width: 850px; margin: 0 auto; }
+        h1 { text-align: center; color: var(--dourado); margin-bottom: 5px; font-size: 1.4em; }
+        .subtitle { text-align: center; color: var(--creme); opacity: 0.7; font-size: 0.85em; margin-bottom: 10px; }
+        .sync-status { text-align: center; font-size: 0.7em; margin-bottom: 8px; }
+        .sync-status.online { color: #27ae60; }
+        .sync-status.offline { color: #e74c3c; }
+        
+        .tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+        .tab { flex: 1; min-width: 70px; padding: 10px 8px; background: var(--marrom-escuro); border: 2px solid transparent; color: var(--creme); cursor: pointer; border-radius: 8px; font-size: 0.8em; text-align: center; transition: all 0.2s; }
+        .tab.active { background: var(--dourado); color: var(--marrom); font-weight: bold; border-color: var(--dourado); }
+        .tab.consolidada { border-color: var(--dourado); }
+        .tab.consolidada.active { background: var(--dourado); color: var(--marrom); }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .dash-item { background: var(--marrom-escuro); padding: 12px; border-radius: 10px; text-align: center; }
+        .dash-item.receber { border: 2px solid #e74c3c; }
+        .dash-item.recebido { border: 2px solid #27ae60; }
+        .dash-item .number { font-size: 1.6em; font-weight: bold; }
+        .dash-item.receber .number { color: #e74c3c; }
+        .dash-item.recebido .number { color: #27ae60; }
+        .dash-item .label { font-size: 0.8em; margin-top: 3px; color: var(--creme); opacity: 0.8; }
+
+        .card { background: var(--marrom-claro); border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid var(--dourado); }
+        .card h2 { font-size: 1em; margin-bottom: 10px; color: var(--dourado); }
+        .upload-area { border: 2px dashed var(--dourado); border-radius: 12px; padding: 15px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 12px; background: var(--marrom-escuro); }
+        .upload-area:hover { background: rgba(191,157,22,0.1); border-color: var(--creme); }
+        .upload-btns { display: flex; gap: 6px; margin-top: 8px; justify-content: center; }
+        .preview-img { max-width: 100%; max-height: 200px; border-radius: 8px; margin: 8px 0; display: none; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .form-group { margin-bottom: 6px; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-group label { display: block; font-size: 0.75em; color: var(--dourado); margin-bottom: 2px; }
+        .form-group input { width: 100%; background: var(--marrom-escuro); border: 1px solid var(--dourado); border-radius: 8px; color: var(--creme); padding: 7px 8px; font-size: 0.85em; }
+        .form-group input:focus { outline: none; border-color: var(--creme); }
+        .checkbox-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .checkbox-group input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--dourado); }
+        .checkbox-group label { font-size: 0.8em; color: var(--creme); margin-right: 10px; }
+        .troco-field { display: none; margin-top: 6px; }
+        .troco-field.active { display: block; }
+        .troco-field input { width: 100%; background: var(--marrom-escuro); border: 1px solid #e74c3c; border-radius: 8px; color: var(--creme); padding: 6px 8px; font-size: 0.8em; }
+        .btn { color: var(--marrom); border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9em; transition: all 0.3s; margin: 3px; font-weight: bold; }
+        .btn-primary { background: var(--dourado); }
+        .btn-primary:hover { background: #d4b020; }
+        .btn-secondary { background: var(--marrom-escuro); color: var(--dourado); border: 1px solid var(--dourado); }
+        .btn-secondary:hover { background: var(--marrom); }
+        .btn-success { background: #27ae60; color: #fff; }
+        .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-info { background: #3498db; color: #fff; }
+        .btn-small { padding: 4px 10px; font-size: 0.75em; }
+        .btn-block { width: 100%; margin: 4px 0; }
+        .result-item { background: var(--marrom-escuro); padding: 10px; border-radius: 8px; margin-bottom: 6px; }
+        .result-item.entregue { border-left: 4px solid #f39c12; }
+        .result-item.recebido { border-left: 4px solid #27ae60; opacity: 0.9; }
+        .result-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 6px; }
+        .result-info { flex: 1; min-width: 160px; }
+        .result-info strong { color: var(--dourado); display: block; margin-bottom: 2px; font-size: 1em; }
+        .result-info span { font-size: 0.8em; color: var(--creme); opacity: 0.8; display: block; margin-bottom: 1px; }
+        .clickable { cursor: pointer; text-decoration: underline; color: var(--dourado); }
+        .result-value { font-size: 1.2em; font-weight: bold; min-width: 70px; text-align: right; }
+        .result-value.recebido { color: #27ae60; }
+        .result-value.pendente { color: #e74c3c; }
+        .result-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+        .badge { display: inline-block; padding: 1px 5px; border-radius: 8px; font-size: 0.6em; font-weight: bold; margin-left: 3px; }
+        .badge.entregue { background: #f39c12; color: #000; }
+        .badge.recebido { background: #27ae60; color: #fff; }
+        .badge.dinheiro { background: #27ae60; color: #fff; }
+        .badge.cartao { background: #3498db; color: #fff; }
+        .badge.troco { background: #e74c3c; color: #fff; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #27ae60; color: #fff; padding: 10px 18px; border-radius: 8px; z-index: 1000; animation: fadeIn 0.3s; font-weight: bold; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .toast.error { background: #e74c3c; }
+        .empty-state { text-align: center; color: var(--creme); opacity: 0.5; padding: 15px; font-size: 0.9em; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--marrom-claro); padding: 18px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; border: 2px solid var(--dourado); }
+        .modal-content h3 { color: var(--dourado); margin-bottom: 12px; }
+        .modal-content input { width: 100%; background: var(--marrom-escuro); border: 1px solid var(--dourado); border-radius: 8px; color: var(--creme); padding: 8px; font-size: 0.95em; margin-bottom: 10px; }
+        .modal-btns { display: flex; gap: 6px; justify-content: center; }
+        .edit-fields { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--dourado); }
+        .edit-fields.active { display: block; }
+        .edit-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+        .edit-row input { width: 100%; background: var(--marrom); border: 1px solid var(--dourado); border-radius: 6px; color: var(--creme); padding: 5px 7px; font-size: 0.8em; }
+        .filter-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+        .filter-row input { background: var(--marrom-escuro); border: 1px solid var(--dourado); border-radius: 8px; color: var(--creme); padding: 6px 8px; font-size: 0.8em; width: 130px; }
+        .filter-row label { font-size: 0.8em; color: var(--dourado); }
+        .consolidado-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .consolidado-item { background: var(--marrom-escuro); padding: 12px; border-radius: 10px; text-align: center; border: 1px solid var(--dourado); }
+        .consolidado-item .number { font-size: 1.8em; font-weight: bold; color: var(--dourado); }
+        .consolidado-item .label { font-size: 0.8em; color: var(--creme); opacity: 0.8; margin-top: 3px; }
+        .import-export { display: flex; gap: 8px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍫 Cacau Show - Entregas</h1>
+        <p class="subtitle">Catanduva - SP</p>
+        <p class="sync-status" id="syncStatus">🔄 Conectando...</p>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('minas')">🏪 Minas</button>
+            <button class="tab" onclick="switchTab('shopping')">🛍 Shopping</button>
+            <button class="tab" onclick="switchTab('proenca')">🏘 Proença</button>
+            <button class="tab consolidada" onclick="switchTab('consolidadas')">📊 Consolidadas</button>
+        </div>
+
+        <!-- Loja Minas -->
+        <div class="tab-content active" id="tab-minas">
+            <div class="dashboard">
+                <div class="dash-item receber"><div class="number" id="pendente-minas">R$ 0,00</div><div class="label">💸 A Receber</div></div>
+                <div class="dash-item recebido"><div class="number" id="recebido-minas">R$ 0,00</div><div class="label">✅ Recebido</div></div>
+            </div>
+            <div class="card">
+                <h2>📸 Nova Entrega - Minas</h2>
+                <div class="upload-area" id="uploadArea-minas">
+                    <div>📤</div><p>Toque para adicionar imagem</p>
+                    <div class="upload-btns">
+                        <button class="btn btn-secondary btn-small" onclick="abrirGaleria('minas')">🖼 Galeria</button>
+                        <button class="btn btn-secondary btn-small" onclick="abrirCamera('minas')">📷 Câmera</button>
+                    </div>
+                    <input type="file" id="fileInput-minas" accept="image/*" onchange="handleFile(this.files[0], 'minas')">
+                </div>
+                <img id="preview-minas" class="preview-img" alt="Preview">
+                <div class="form-grid">
+                    <div class="form-group"><label>👤 Nome</label><input type="text" id="nome-minas" placeholder="Nome do cliente"></div>
+                    <div class="form-group"><label>🆔 iFood</label><div class="checkbox-group"><input type="checkbox" id="temIdIfood-minas"><label>✅ Pedido iFood</label></div></div>
+                    <div class="form-group full"><label>📍 Endereço</label><input type="text" id="endereco-minas" placeholder="Rua, número"></div>
+                    <div class="form-group full"><label>🏢 Complemento</label><input type="text" id="complemento-minas" placeholder="Bloco, apto, referência"></div>
+                    <div class="form-group"><label>🏘 Bairro</label><input type="text" id="bairro-minas" placeholder="Bairro"></div>
+                    <div class="form-group"><label>📦 Entregar para</label><input type="text" id="entregarPara-minas" placeholder="Nome no pedido"></div>
+                    <div class="form-group"><label>🕐 Pedido aceito</label><input type="text" id="pedidoAceito-minas" placeholder="Horário"></div>
+                    <div class="form-group"><label>⏰ Previsão</label><input type="text" id="entregaPrevista-minas" placeholder="Previsão"></div>
+                    <div class="form-group"><label>💰 Valor Entrega (R$)</label><input type="number" id="valorEntrega-minas" placeholder="0,00" step="0.01"></div>
+                    <div class="form-group"><label>🛒 Valor Pedido (R$)</label><input type="number" id="valorPedido-minas" placeholder="0,00" step="0.01"></div>
+                    <div class="form-group full">
+                        <label>💳 Forma de Pagamento</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="dinheiro-minas" onchange="toggleTroco('minas')"><label>💵 Dinheiro</label>
+                            <input type="checkbox" id="cartao-minas"><label>💳 Cartão</label>
+                        </div>
+                        <div class="troco-field" id="trocoField-minas">
+                            <label style="color:#e74c3c;">💱 Troco para qual valor?</label>
+                            <input type="number" id="trocoPara-minas" placeholder="Ex: 50,00" step="0.01">
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block" onclick="adicionarEntrega('minas')">💾 Salvar</button>
+                <button class="btn btn-secondary btn-block" onclick="limparFormulario('minas')">✕ Limpar</button>
+            </div>
+            <div class="card"><h2>📋 Entregas - Minas</h2><div id="resultsList-minas"><p class="empty-state">Carregando...</p></div></div>
+        </div>
+
+        <!-- Loja Shopping -->
+        <div class="tab-content" id="tab-shopping">
+            <div class="dashboard">
+                <div class="dash-item receber"><div class="number" id="pendente-shopping">R$ 0,00</div><div class="label">💸 A Receber</div></div>
+                <div class="dash-item recebido"><div class="number" id="recebido-shopping">R$ 0,00</div><div class="label">✅ Recebido</div></div>
+            </div>
+            <div class="card">
+                <h2>📸 Nova Entrega - Shopping</h2>
+                <div class="upload-area" id="uploadArea-shopping">
+                    <div>📤</div><p>Toque para adicionar imagem</p>
+                    <div class="upload-btns">
+                        <button class="btn btn-secondary btn-small" onclick="abrirGaleria('shopping')">🖼 Galeria</button>
+                        <button class="btn btn-secondary btn-small" onclick="abrirCamera('shopping')">📷 Câmera</button>
+                    </div>
+                    <input type="file" id="fileInput-shopping" accept="image/*" onchange="handleFile(this.files[0], 'shopping')">
+                </div>
+                <img id="preview-shopping" class="preview-img" alt="Preview">
+                <div class="form-grid">
+                    <div class="form-group"><label>👤 Nome</label><input type="text" id="nome-shopping" placeholder="Nome do cliente"></div>
+                    <div class="form-group"><label>🆔 iFood</label><div class="checkbox-group"><input type="checkbox" id="temIdIfood-shopping"><label>✅ Pedido iFood</label></div></div>
+                    <div class="form-group full"><label>📍 Endereço</label><input type="text" id="endereco-shopping" placeholder="Rua, número"></div>
+                    <div class="form-group full"><label>🏢 Complemento</label><input type="text" id="complemento-shopping" placeholder="Bloco, apto, referência"></div>
+                    <div class="form-group"><label>🏘 Bairro</label><input type="text" id="bairro-shopping" placeholder="Bairro"></div>
+                    <div class="form-group"><label>📦 Entregar para</label><input type="text" id="entregarPara-shopping" placeholder="Nome no pedido"></div>
+                    <div class="form-group"><label>🕐 Pedido aceito</label><input type="text" id="pedidoAceito-shopping" placeholder="Horário"></div>
+                    <div class="form-group"><label>⏰ Previsão</label><input type="text" id="entregaPrevista-shopping" placeholder="Previsão"></div>
+                    <div class="form-group"><label>💰 Valor Entrega (R$)</label><input type="number" id="valorEntrega-shopping" placeholder="0,00" step="0.01"></div>
+                    <div class="form-group"><label>🛒 Valor Pedido (R$)</label><input type="number" id="valorPedido-shopping" placeholder="0,00" step="0.01"></div>
+                    <div class="form-group full">
+                        <label>💳 Forma de Pagamento</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="dinheiro-shopping" onchange="toggleTroco('shopping')"><label>💵 Dinheiro</label>
+                            <input type="checkbox" id="cartao-shopping"><label>💳 Cartão</label>
+                        </div>
+                        <div class="troco-field" id="trocoField-shopping">
+                            <label style="color:#e74c3c;">💱 Troco para qual valor?</label>
+                            <input type="number" id="trocoPara-shopping" placeholder="Ex: 50,00" step="0.01">
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block" onclick="adicionarEntrega('shopping')">💾 Salvar</button>
+                <button class="btn btn-secondary btn-block" onclick="limparFormulario('shopping')">✕ Limpar</button>
+            </div>
+            <div class="card"><h2>📋 Entregas - Shopping</h2><div id="resultsList-shopping"><p class="empty-state">Carregando...</p></div></div>
+        </div>
+
+        <!-- Loja Proença -->
+        <div class="tab-content" id="tab-proenca">
+            <div class="dashboard">
+                <div class="dash-item receber"><div class="number" id="pendente-proenca">R$ 0,00</div><div class="label">💸 A Receber</div></div>
+                <div class="dash-item recebido"><div class="number" id="recebido-proenca">R$ 0,00</div><div class="label">✅ Recebido</div></div>
+            </div>
+            <div class="card">
+                <h2>📸 Nova Entrega - Proença</h2>
+                <div class="upload-area" id="uploadArea-proenca">
+                    <div>📤</div><p>Toque para adicionar imagem</p>
+                    <div class="upload-btns">
+                        <button class="btn btn-secondary btn-small" onclick="abrirGaleria('proenca')">🖼 Galeria</button>
+                        <button class="btn btn-secondary btn-small" onclick="abrirCamera('proenca')">📷 Câmera</button>
+                    </div>
+                    <input type="file" id="fileInput-proenca" accept="image/*" onchange="handleFile(this.files[0], 'proenca')">
+                </div>
+                <img id="preview-proenca" class="preview-img" alt="Preview">
+                <div class="form-grid">
+                    <div class="form-group"><label>👤 Nome</label><input type="text" id="nome-proenca" placeholder="Nome do cliente"></div>
+                    <div class="form-group"><label>🆔 iFood</label><div class="checkbox-group"><input type="checkbox" id="temIdIfood-proenca"><label>✅ Pedido iFood</label></div></div>
+                    <div class="form-group full"><label>📍 Endereço</label><input type="text" id="endereco-proenca" placeholder="Rua, número"></div>
+                    <div class="form-group full"><label>🏢 Complemento</label><input type="text" id="complemento-proenca" placeholder="Bloco, apto, referência"></div>
+                    <div class="form-group"><label>🏘 Bairro</label><input type="text" id="bairro-proenca" placeholder="Bairro"></div>
+                    <div class="form-group"><label>📦 Entregar para</label><input type="text" id="entregarPara-proenca" placeholder="Nome no pedido"></div>
+                    <div class="form-group"><label>🕐 Pedido aceito</label><input type="text" id="pedidoAceito-proenca" placeholder="Horário"></div>
+                    <div class="form-group"><label>⏰ Previsão</label><input type="text" id="entregaPrevista-proenca" placeholder="Previsão"></div>
+                    <div class="form-group"><label>💰 Valor Entrega (R$)</label><input type="number" id="valorEntrega-proenca" placeholder="0,00" step="0.01"></div>
+                    <div class="form-group"><label>🛒 Valor Pedido (R$)</label><input type="number" id="valorPedido-proenca" placeholder="0,00" step="0.01"></div>
+                    <div class="form-group full">
+                        <label>💳 Forma de Pagamento</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="dinheiro-proenca" onchange="toggleTroco('proenca')"><label>💵 Dinheiro</label>
+                            <input type="checkbox" id="cartao-proenca"><label>💳 Cartão</label>
+                        </div>
+                        <div class="troco-field" id="trocoField-proenca">
+                            <label style="color:#e74c3c;">💱 Troco para qual valor?</label>
+                            <input type="number" id="trocoPara-proenca" placeholder="Ex: 50,00" step="0.01">
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block" onclick="adicionarEntrega('proenca')">💾 Salvar</button>
+                <button class="btn btn-secondary btn-block" onclick="limparFormulario('proenca')">✕ Limpar</button>
+            </div>
+            <div class="card"><h2>📋 Entregas - Proença</h2><div id="resultsList-proenca"><p class="empty-state">Carregando...</p></div></div>
+        </div>
+
+        <!-- Aba Consolidadas -->
+        <div class="tab-content" id="tab-consolidadas">
+            <div class="card">
+                <h2>📊 Filtro por Período</h2>
+                <div class="filter-row">
+                    <label>Início:</label><input type="date" id="dataInicio">
+                    <label>Fim:</label><input type="date" id="dataFim">
+                    <button class="btn btn-primary btn-small" onclick="atualizarConsolidadas()">🔍 Filtrar</button>
+                </div>
+                <div class="consolidado-grid">
+                    <div class="consolidado-item"><div class="number" id="consValorTotal">R$ 0,00</div><div class="label">💰 Valor Total</div></div>
+                    <div class="consolidado-item"><div class="number" id="consQtdTotal">0</div><div class="label">📦 Total Entregas</div></div>
+                    <div class="consolidado-item"><div class="number" id="consValorPendente">R$ 0,00</div><div class="label">💸 A Receber</div></div>
+                    <div class="consolidado-item"><div class="number" id="consValorRecebido">R$ 0,00</div><div class="label">✅ Recebido</div></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                    <div class="consolidado-item"><div class="number" id="consMinas">0</div><div class="label">🏪 Minas</div></div>
+                    <div class="consolidado-item"><div class="number" id="consShopping">0</div><div class="label">🛍 Shopping</div></div>
+                    <div class="consolidado-item"><div class="number" id="consProenca">0</div><div class="label">🏘 Proença</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="import-export">
+            <button class="btn btn-info btn-small" onclick="exportarDados()">📤 Exportar Backup</button>
+            <button class="btn btn-info btn-small" onclick="document.getElementById('fileImport').click()">📥 Importar Backup</button>
+            <input type="file" id="fileImport" accept=".json" style="display:none" onchange="importarDados(event)">
+            <button class="btn btn-danger btn-small" onclick="limparTudoGeral()">🗑 Limpar Tudo</button>
+        </div>
+    </div>
+
+    <!-- Modal Entregue -->
+    <div class="modal" id="modalEntregue">
+        <div class="modal-content">
+            <h3>📦 Pedido Entregue!</h3>
+            <p>Quem recebeu?</p>
+            <input type="text" id="quemRecebeu" placeholder="Nome">
+            <div class="modal-btns">
+                <button class="btn btn-primary" onclick="confirmarEntrega()">✅ Confirmar</button>
+                <button class="btn btn-secondary" onclick="cancelarEntrega()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDJiTkxIwO5_Sh5AksXwmfWl0NnzmhMnqM",
+            authDomain: "cacau-show-catanduva.firebaseapp.com",
+            projectId: "cacau-show-catanduva",
+            storageBucket: "cacau-show-catanduva.firebasestorage.app",
+            messagingSenderId: "213727212413",
+            appId: "1:213727212413:web:e63419fbec41dceb881214"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        const LOJAS = ['minas', 'shopping', 'proenca'];
+        const LINK_IFOOD = 'https://confirmacao-entrega-propria.ifood.com.br/numero-pedido';
+        
+        let dados = { minas: [], shopping: [], proenca: [] };
+        let imagens = {};
+        let entregaPendente = { loja: null, id: null, firebaseId: null };
+        let listeners = [];
+        
+        // Status de conexão
+        function updateSyncStatus(online) {
+            const el = document.getElementById('syncStatus');
+            if (online) {
+                el.textContent = '🟢 Online - Sincronizado';
+                el.className = 'sync-status online';
+            } else {
+                el.textContent = '🔴 Offline - Dados locais';
+                el.className = 'sync-status offline';
+            }
+        }
+        
+        // Iniciar listeners do Firestore
+        function iniciarListeners() {
+            LOJAS.forEach(loja => {
+                const q = query(collection(db, 'entregas_' + loja), orderBy('dataCriacao', 'desc'));
+                const unsub = onSnapshot(q, (snapshot) => {
+                    dados[loja] = [];
+                    snapshot.forEach(doc => {
+                        dados[loja].push({ ...doc.data(), firebaseId: doc.id });
+                    });
+                    renderizarLoja(loja);
+                    if (loja === document.querySelector('.tab.active')?.id?.replace('tab-', '') || 
+                        document.getElementById('tab-consolidadas')?.classList.contains('active')) {
+                        atualizarConsolidadas();
+                    }
+                    updateSyncStatus(true);
+                }, (error) => {
+                    console.error('Erro listener:', error);
+                    updateSyncStatus(false);
+                });
+                listeners.push(unsub);
+            });
+        }
+        
+        // Aguardar DOM carregar
+        window.addEventListener('DOMContentLoaded', () => {
+            iniciarListeners();
+        });
+        
+        // Funções globais (precisam ser window para onclick funcionar)
+        window.abrirGaleria = function(loja) {
+            const input = document.getElementById('fileInput-' + loja);
+            input.removeAttribute('capture');
+            input.click();
+        };
+        
+        window.abrirCamera = function(loja) {
+            const input = document.getElementById('fileInput-' + loja);
+            input.setAttribute('capture', 'environment');
+            input.click();
+        };
+        
+        window.handleFile = function(file, loja) {
+            if (!file || !file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 600;
+                    let width = img.width, height = img.height;
+                    if (width > MAX_WIDTH) {
+                        height = (height * MAX_WIDTH) / width;
+                        width = MAX_WIDTH;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                    imagens[loja] = canvas.toDataURL('image/jpeg', 0.5);
+                    const preview = document.getElementById('preview-' + loja);
+                    if (preview) { preview.src = imagens[loja]; preview.style.display = 'block'; }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+        
+        window.toggleTroco = function(loja) {
+            const dinheiro = document.getElementById('dinheiro-' + loja);
+            const trocoField = document.getElementById('trocoField-' + loja);
+            if (trocoField) {
+                trocoField.classList.toggle('active', dinheiro?.checked);
+                if (!dinheiro?.checked) document.getElementById('trocoPara-' + loja).value = '';
+            }
+        };
+        
+        window.switchTab = function(loja) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            const indices = { minas: 1, shopping: 2, proenca: 3, consolidadas: 4 };
+            document.querySelector('.tab:nth-child(' + indices[loja] + ')').classList.add('active');
+            document.getElementById('tab-' + loja).classList.add('active');
+            if (loja === 'consolidadas') atualizarConsolidadas();
+        };
+        
+        window.adicionarEntrega = async function(loja) {
+            const dinheiro = document.getElementById('dinheiro-' + loja)?.checked || false;
+            const entrega = {
+                nome: document.getElementById('nome-' + loja)?.value?.trim() || 'Não informado',
+                temIdIfood: document.getElementById('temIdIfood-' + loja)?.checked || false,
+                endereco: document.getElementById('endereco-' + loja)?.value?.trim() || 'Não informado',
+                complemento: document.getElementById('complemento-' + loja)?.value?.trim() || '',
+                bairro: document.getElementById('bairro-' + loja)?.value?.trim() || 'Não informado',
+                entregarPara: document.getElementById('entregarPara-' + loja)?.value?.trim() || '',
+                entreguePara: '',
+                pedidoAceito: document.getElementById('pedidoAceito-' + loja)?.value?.trim() || '',
+                entregaPrevista: document.getElementById('entregaPrevista-' + loja)?.value?.trim() || '',
+                dinheiro: dinheiro,
+                cartao: document.getElementById('cartao-' + loja)?.checked || false,
+                trocoPara: dinheiro ? (parseFloat(document.getElementById('trocoPara-' + loja)?.value) || 0) : 0,
+                valorEntrega: parseFloat(document.getElementById('valorEntrega-' + loja)?.value) || 0,
+                valorPedido: parseFloat(document.getElementById('valorPedido-' + loja)?.value) || 0,
+                imagem: imagens[loja] || null,
+                entregue: false,
+                recebido: false,
+                dataCriacao: new Date().toISOString(),
+                horaEntrega: null
+            };
+            
+            if (!entrega.nome || entrega.nome === 'Não informado') {
+                showToast('⚠️ Preencha o nome', true); return;
+            }
+            
+            try {
+                await addDoc(collection(db, 'entregas_' + loja), entrega);
+                limparFormulario(loja);
+                showToast('✅ Entrega salva!');
+            } catch (err) {
+                showToast('❌ Erro ao salvar: ' + err.message, true);
+            }
+        };
+        
+        window.limparFormulario = function(loja) {
+            ['nome', 'endereco', 'complemento', 'bairro', 'entregarPara', 'pedidoAceito', 'entregaPrevista', 'valorEntrega', 'valorPedido', 'trocoPara'].forEach(c => {
+                const el = document.getElementById(c + '-' + loja);
+                if (el) el.value = '';
+            });
+            ['temIdIfood', 'dinheiro', 'cartao'].forEach(c => {
+                const el = document.getElementById(c + '-' + loja);
+                if (el) el.checked = false;
+            });
+            document.getElementById('trocoField-' + loja)?.classList.remove('active');
+            imagens[loja] = null;
+            const preview = document.getElementById('preview-' + loja);
+            if (preview) preview.style.display = 'none';
+            document.getElementById('fileInput-' + loja).value = '';
+        };
+        
+        window.toggleEntregue = function(loja, firebaseId) {
+            const e = dados[loja].find(e => e.firebaseId === firebaseId);
+            if (!e) return;
+            if (!e.entregue) {
+                entregaPendente = { loja, firebaseId };
+                document.getElementById('quemRecebeu').value = '';
+                document.getElementById('modalEntregue').classList.add('active');
+            } else {
+                updateDoc(doc(db, 'entregas_' + loja, firebaseId), {
+                    entregue: false,
+                    horaEntrega: null,
+                    entreguePara: ''
+                });
+            }
+        };
+        
+        window.confirmarEntrega = async function() {
+            const { loja, firebaseId } = entregaPendente;
+            const quem = document.getElementById('quemRecebeu').value.trim() || 'Não informado';
+            try {
+                await updateDoc(doc(db, 'entregas_' + loja, firebaseId), {
+                    entregue: true,
+                    horaEntrega: new Date().toLocaleString('pt-BR'),
+                    entreguePara: quem
+                });
+                showToast('📦 Entregue!');
+            } catch (err) {
+                showToast('❌ Erro', true);
+            }
+            document.getElementById('modalEntregue').classList.remove('active');
+            entregaPendente = { loja: null, firebaseId: null };
+        };
+        
+        window.cancelarEntrega = function() {
+            document.getElementById('modalEntregue').classList.remove('active');
+            entregaPendente = { loja: null, firebaseId: null };
+        };
+        
+        window.toggleRecebido = function(loja, firebaseId) {
+            const e = dados[loja].find(e => e.firebaseId === firebaseId);
+            if (e) {
+                updateDoc(doc(db, 'entregas_' + loja, firebaseId), { recebido: !e.recebido });
+            }
+        };
+        
+        window.toggleEdit = function(loja, firebaseId) {
+            document.getElementById('edit-' + firebaseId).classList.toggle('active');
+        };
+        
+        window.salvarEdicao = async function(loja, firebaseId) {
+            try {
+                await updateDoc(doc(db, 'entregas_' + loja, firebaseId), {
+                    nome: document.getElementById('editNome-' + firebaseId).value,
+                    endereco: document.getElementById('editEndereco-' + firebaseId).value,
+                    complemento: document.getElementById('editComplemento-' + firebaseId).value,
+                    bairro: document.getElementById('editBairro-' + firebaseId).value,
+                    valorEntrega: parseFloat(document.getElementById('editValor-' + firebaseId).value) || 0,
+                    valorPedido: parseFloat(document.getElementById('editValorPedido-' + firebaseId).value) || 0,
+                    trocoPara: parseFloat(document.getElementById('editTroco-' + firebaseId).value) || 0
+                });
+                showToast('✅ Atualizado!');
+            } catch (err) {
+                showToast('❌ Erro', true);
+            }
+        };
+        
+        window.abrirMaps = function(endereco, bairro) {
+            window.open('https://www.google.com/maps/search/' + encodeURIComponent(endereco + ', ' + bairro + ', Catanduva - SP'), '_blank');
+        };
+        
+        window.abrirIfood = function() {
+            window.open(LINK_IFOOD, '_blank');
+        };
+        
+        window.removerEntrega = async function(loja, firebaseId) {
+            if (!confirm('Remover esta entrega?')) return;
+            try {
+                await deleteDoc(doc(db, 'entregas_' + loja, firebaseId));
+            } catch (err) {
+                showToast('❌ Erro', true);
+            }
+        };
+        
+        window.limparTudoGeral = async function() {
+            if (!confirm('⚠️ Apagar TODAS as entregas do Firebase?')) return;
+            for (const loja of LOJAS) {
+                for (const e of dados[loja]) {
+                    try { await deleteDoc(doc(db, 'entregas_' + loja, e.firebaseId)); } catch(err) {}
+                }
+            }
+        };
+        
+        window.exportarDados = function() {
+            const exportData = { versao: '6.0', dataExportacao: new Date().toISOString(), lojas: {} };
+            LOJAS.forEach(loja => {
+                exportData.lojas[loja] = dados[loja].map(e => {
+                    const { firebaseId, imagem, ...rest } = e;
+                    return { ...rest, temImagem: !!imagem };
+                });
+            });
+            const blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'cacaushow_backup_' + new Date().toISOString().split('T')[0] + '.json';
+            a.click();
+            showToast('📤 Backup exportado!');
+        };
+        
+        window.importarDados = async function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const importData = JSON.parse(e.target.result);
+                    let total = 0;
+                    for (const loja of LOJAS) {
+                        if (importData.lojas[loja]) {
+                            for (const entrega of importData.lojas[loja]) {
+                                await addDoc(collection(db, 'entregas_' + loja), entrega);
+                                total++;
+                            }
+                        }
+                    }
+                    showToast('📥 ' + total + ' importadas!');
+                } catch (err) {
+                    showToast('❌ Erro no arquivo', true);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        };
+        
+        function renderizarLoja(loja) {
+            const lista = dados[loja] || [];
+            const container = document.getElementById('resultsList-' + loja);
+            const pendenteEl = document.getElementById('pendente-' + loja);
+            const recebidoEl = document.getElementById('recebido-' + loja);
+            if (!container) return;
+            
+            const pendentes = lista.filter(e => !e.recebido);
+            const recebidos = lista.filter(e => e.recebido);
+            if (pendenteEl) pendenteEl.textContent = 'R$ ' + pendentes.reduce((s, e) => s + (e.valorEntrega || 0), 0).toFixed(2).replace('.', ',');
+            if (recebidoEl) recebidoEl.textContent = 'R$ ' + recebidos.reduce((s, e) => s + (e.valorEntrega || 0), 0).toFixed(2).replace('.', ',');
+
+            if (lista.length === 0) {
+                container.innerHTML = '<p class="empty-state">Nenhuma entrega</p>';
+                return;
+            }
+
+            container.innerHTML = lista.map(e => {
+                const id = e.firebaseId;
+                const endereco = (e.endereco || '').replace(/'/g, "\\'");
+                const bairro = (e.bairro || '').replace(/'/g, "\\'");
+                return `
+                <div class="result-item ${e.entregue ? 'entregue' : ''} ${e.recebido ? 'recebido' : ''}">
+                    <div class="result-header">
+                        <div class="result-info">
+                            <strong>${e.nome} ${e.entregue?'<span class="badge entregue">📦</span>':''} ${e.recebido?'<span class="badge recebido">💰</span>':''} ${e.dinheiro?'<span class="badge dinheiro">💵</span>':''} ${e.cartao?'<span class="badge cartao">💳</span>':''} ${e.trocoPara > 0 ? '<span class="badge troco">💱 R$ ' + parseFloat(e.trocoPara).toFixed(2).replace('.',',') + '</span>' : ''}</strong>
+                            <span>📍 <span class="clickable" onclick="abrirMaps('${endereco}','${bairro}')">${e.endereco} 🗺</span></span>
+                            ${e.complemento?`<span>🏢 ${e.complemento}</span>`:''}
+                            <span>🏘 ${e.bairro}</span>
+                            ${e.temIdIfood?`<span>🆔 <span class="clickable" onclick="abrirIfood()">Abrir iFood 🔗</span></span>`:''}
+                            ${e.entregarPara?`<span>📦 Para: ${e.entregarPara}</span>`:''}
+                            ${e.entreguePara?`<span>✅ Recebeu: ${e.entreguePara}</span>`:''}
+                            ${e.pedidoAceito?`<span>🕐 Aceito: ${e.pedidoAceito}</span>`:''}
+                            ${e.entregaPrevista?`<span>⏰ Prev: ${e.entregaPrevista}</span>`:''}
+                            ${e.horaEntrega?`<span style="color:#f39c12;">🚀 ${e.horaEntrega}</span>`:''}
+                            <span style="font-size:0.65em;opacity:0.5;">${new Date(e.dataCriacao).toLocaleString('pt-BR')}</span>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="result-value ${e.recebido?'recebido':'pendente'}">R$ ${(e.valorEntrega||0).toFixed(2).replace('.',',')}</div>
+                            ${e.valorPedido > 0 ? `<div style="font-size:0.7em;opacity:0.6;">Pedido: R$ ${e.valorPedido.toFixed(2).replace('.',',')}</div>` : ''}
+                        </div>
+                    </div>
+                    ${e.imagem?`<img src="${e.imagem}" style="max-width:100%;max-height:120px;border-radius:8px;margin-top:6px;" loading="lazy">`:''}
+                    <div class="result-actions">
+                        <button class="btn ${e.entregue?'btn-success':'btn-primary'} btn-small" onclick="toggleEntregue('${loja}','${id}')">${e.entregue?'✅ Entregue':'📦 Entregue'}</button>
+                        <button class="btn ${e.recebido?'btn-success':'btn-primary'} btn-small" onclick="toggleRecebido('${loja}','${id}')">${e.recebido?'✅ Recebido':'💰 Recebido'}</button>
+                        <button class="btn btn-secondary btn-small" onclick="toggleEdit('${loja}','${id}')">✏️</button>
+                        <button class="btn btn-secondary btn-small" onclick="removerEntrega('${loja}','${id}')">🗑</button>
+                    </div>
+                    <div class="edit-fields" id="edit-${id}">
+                        <div class="edit-row">
+                            <div><label>Nome</label><input value="${e.nome}" id="editNome-${id}"></div>
+                            <div><label>Endereço</label><input value="${e.endereco}" id="editEndereco-${id}"></div>
+                        </div>
+                        <div class="edit-row">
+                            <div><label>Complemento</label><input value="${e.complemento || ''}" id="editComplemento-${id}"></div>
+                            <div><label>Bairro</label><input value="${e.bairro}" id="editBairro-${id}"></div>
+                        </div>
+                        <div class="edit-row">
+                            <div><label>Valor Entrega</label><input type="number" step="0.01" value="${e.valorEntrega||0}" id="editValor-${id}"></div>
+                            <div><label>Valor Pedido</label><input type="number" step="0.01" value="${e.valorPedido||0}" id="editValorPedido-${id}"></div>
+                        </div>
+                        <div class="edit-row">
+                            <div><label>Troco para</label><input type="number" step="0.01" value="${e.trocoPara||0}" id="editTroco-${id}"></div>
+                        </div>
+                        <button class="btn btn-primary btn-small" onclick="salvarEdicao('${loja}','${id}')">💾 Salvar</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        window.atualizarConsolidadas = function() {
+            const inicio = document.getElementById('dataInicio')?.value || '';
+            const fim = document.getElementById('dataFim')?.value || '';
+            let todas = [];
+            LOJAS.forEach(l => {
+                dados[l].forEach(e => {
+                    const dataE = new Date(e.dataCriacao);
+                    let ok = true;
+                    if (inicio && new Date(inicio + 'T00:00:00') > dataE) ok = false;
+                    if (fim && new Date(fim + 'T23:59:59') < dataE) ok = false;
+                    if (ok) todas.push({...e, loja: l});
+                });
+            });
+            document.getElementById('consValorTotal').textContent = 'R$ ' + todas.reduce((s,e) => s + (e.valorEntrega||0), 0).toFixed(2).replace('.',',');
+            document.getElementById('consQtdTotal').textContent = todas.length;
+            document.getElementById('consValorPendente').textContent = 'R$ ' + todas.filter(e => !e.recebido).reduce((s,e) => s + (e.valorEntrega||0), 0).toFixed(2).replace('.',',');
+            document.getElementById('consValorRecebido').textContent = 'R$ ' + todas.filter(e => e.recebido).reduce((s,e) => s + (e.valorEntrega||0), 0).toFixed(2).replace('.',',');
+            document.getElementById('consMinas').textContent = todas.filter(e => e.loja === 'minas').length;
+            document.getElementById('consShopping').textContent = todas.filter(e => e.loja === 'shopping').length;
+            document.getElementById('consProenca').textContent = todas.filter(e => e.loja === 'proenca').length;
+        };
+        
+        window.showToast = function(msg, isError = false) {
+            const toast = document.createElement('div');
+            toast.className = 'toast' + (isError ? ' error' : '');
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2500);
+        };
+    </script>
+</body>
+</html>
