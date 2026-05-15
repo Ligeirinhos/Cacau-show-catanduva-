@@ -500,7 +500,7 @@
                 return `
                 <div class="result-item ${e.entregue?'entregue':''} ${e.recebido?'recebido':''}">
                     <div class="result-header"><div class="result-info">
-                        <strong>${e.nome} ${e.entregue?'<span class="badge entregue">📦</span>':''} ${e.recebido?'<span class="badge recebido">💰</span>':''} ${e.dinheiro?'<span class="badge dinheiro">💵</span>':''} ${e.cartao?'<span class="badge cartao">💳</span>':''} ${e.trocoValor>0?'<span class="badge troco">💱 R$ '+parseFloat(e.trocoValor).toFixed(2).replace('.',',')+'</span>':''}</strong>
+                        <strong>${e.nome} ${e.entregue?'<span class="badge entregue">📦 Pedido Entregue</span>':''} ${e.recebido?'<span class="badge recebido">💰 Dinheiro no Bolso</span>':''} ${e.dinheiro?'<span class="badge dinheiro">💵 Entrega em Dinheiro</span>':''} ${e.cartao?'<span class="badge cartao">💳 Entrega com Maquininha</span>':''} ${e.trocoValor>0?'<span class="badge troco">💱 R$ '+parseFloat(e.trocoValor).toFixed(2).replace('.',',')+'</span>':''}</strong>
                         ${e.pedidoAceito?`<span class="pedido-aceito">🕐 Pedido aceito: ${e.pedidoAceito}</span>`:''}
                         <span class="data-criacao">📅 ${new Date(e.dataCriacao).toLocaleString('pt-BR')}</span>
                         <span>📍 <span class="clickable" onclick="abrirMaps('${esc(e.endereco)}')">${e.endereco} 🗺</span></span>
