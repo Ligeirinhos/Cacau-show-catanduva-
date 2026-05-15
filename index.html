@@ -19,8 +19,10 @@
         .sync-status.online { color: #27ae60; } .sync-status.offline { color: #e74c3c; }
         
         .tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
-        .tab { flex: 1; min-width: 70px; padding: 10px 8px; background: var(--marrom-escuro); border: 2px solid transparent; color: var(--creme); cursor: pointer; border-radius: 8px; font-size: 0.8em; text-align: center; transition: all 0.2s; }
+        .tab { flex: 1; min-width: 70px; padding: 8px 6px; background: var(--marrom-escuro); border: 2px solid transparent; color: var(--creme); cursor: pointer; border-radius: 8px; font-size: 0.75em; text-align: center; transition: all 0.2s; line-height: 1.3; }
         .tab.active { background: var(--dourado); color: var(--marrom); font-weight: bold; border-color: var(--dourado); }
+        .tab .contador { font-size: 0.65em; opacity: 0.8; display: block; margin-top: 2px; }
+        .tab.active .contador { opacity: 1; }
         .tab.consolidada { border-color: var(--dourado); } .tab.consolidada.active { background: var(--dourado); color: var(--marrom); }
         .tab-content { display: none; } .tab-content.active { display: block; }
 
@@ -152,11 +154,11 @@
             <button class="btn btn-secondary btn-block" onclick="limparFormulario()">✕ Limpar</button>
         </div>
 
-        <!-- TABS -->
+        <!-- TABS COM CONTADOR -->
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('minas')">🏪 Minas</button>
-            <button class="tab" onclick="switchTab('shopping')">🛍 Shopping</button>
-            <button class="tab" onclick="switchTab('proenca')">🏘 Proença</button>
+            <button class="tab active" onclick="switchTab('minas')">🏪 Minas<span class="contador" id="contador-minas">0/0</span></button>
+            <button class="tab" onclick="switchTab('shopping')">🛍 Shopping<span class="contador" id="contador-shopping">0/0</span></button>
+            <button class="tab" onclick="switchTab('proenca')">🏘 Proença<span class="contador" id="contador-proenca">0/0</span></button>
             <button class="tab consolidada" onclick="switchTab('consolidadas')">📊 Consolidadas</button>
         </div>
 
@@ -222,6 +224,30 @@
             el.className = 'sync-status ' + (online ? 'online' : 'offline');
         }
 
+        // Calcula tempo de entrega em minutos
+        function calcularTempoEntrega(dataCriacao, horaEntrega) {
+            if (!dataCriacao || !horaEntrega) return null;
+            try {
+                const inicio = new Date(dataCriacao);
+                const partesHora = horaEntrega.split(' ');
+                const dataHora = partesHora.length > 1 ? partesHora[1] : horaEntrega;
+                const [h, m] = dataHora.split(':').map(Number);
+                const fim = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate(), h, m);
+                const diffMin = Math.round((fim - inicio) / 60000);
+                if (diffMin < 0) return Math.abs(diffMin); // Se negativo, pega valor absoluto
+                return diffMin;
+            } catch(e) { return null; }
+        }
+
+        // Formata tempo de entrega
+        function formatarTempo(minutos) {
+            if (minutos === null || minutos === undefined) return '';
+            if (minutos < 60) return `${minutos}min`;
+            const h = Math.floor(minutos / 60);
+            const m = minutos % 60;
+            return `${h}h${m > 0 ? m.toString().padStart(2,'0') : ''}`;
+        }
+
         function calcularTimer(entregaPrevista, entregue, horaEntrega) {
             if (!entregaPrevista) return { texto: '', classe: '' };
             
@@ -279,6 +305,7 @@
                 dados[loja] = [];
                 snapshot.forEach(doc => dados[loja].push({ ...doc.data(), firebaseId: doc.id }));
                 renderizarLoja(loja);
+                atualizarContadores();
                 updateSyncStatus(true);
             }, () => updateSyncStatus(false));
         });
@@ -287,9 +314,26 @@
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(() => {
                 LOJAS.forEach(loja => renderizarLoja(loja));
+                atualizarContadores();
             }, 30000);
         }
         iniciarTimers();
+
+        function atualizarContadores() {
+            const hojeInicio = hoje(), hojeFim = amanha();
+            LOJAS.forEach(loja => {
+                const entregasHoje = (dados[loja] || []).filter(e => {
+                    const d = new Date(e.dataCriacao);
+                    return d >= hojeInicio && d < hojeFim;
+                });
+                const total = entregasHoje.length;
+                const entregues = entregasHoje.filter(e => e.entregue).length;
+                const contadorEl = document.getElementById('contador-' + loja);
+                if (contadorEl) {
+                    contadorEl.textContent = total > 0 ? `${entregues}/${total}` : '0/0';
+                }
+            });
+        }
 
         window.calcularTroco = () => {
             const vp = parseFloat(document.getElementById('valorPedido')?.value) || 0;
@@ -360,7 +404,8 @@
                 valorEntrega: parseFloat(document.getElementById('valorEntrega')?.value) || 0,
                 valorPedido: vp, imagem: imagemAtual,
                 entregue: false, recebido: false,
-                dataCriacao: new Date().toISOString(), horaEntrega: null
+                dataCriacao: new Date().toISOString(), horaEntrega: null,
+                tempoEntrega: null
             };
             
             if(e.nome==='Não informado'){showToast('⚠️ Preencha o nome',true);return;}
@@ -389,12 +434,21 @@
             const e = dados[loja].find(x=>x.firebaseId===firebaseId);
             if(!e)return;
             if(!e.entregue){ entregaPendente={loja,firebaseId}; document.getElementById('quemRecebeu').value=''; document.getElementById('modalEntregue').classList.add('active'); }
-            else updateDoc(doc(db,'entregas_'+loja,firebaseId),{entregue:false,horaEntrega:null,entreguePara:''});
+            else updateDoc(doc(db,'entregas_'+loja,firebaseId),{entregue:false,horaEntrega:null,entreguePara:'',tempoEntrega:null});
         };
 
         window.confirmarEntrega = async () => {
             const {loja,firebaseId}=entregaPendente;
-            await updateDoc(doc(db,'entregas_'+loja,firebaseId),{entregue:true,horaEntrega:new Date().toLocaleString('pt-BR'),entreguePara:document.getElementById('quemRecebeu').value.trim()||'Não informado'});
+            const e = dados[loja].find(x=>x.firebaseId===firebaseId);
+            if(!e) return;
+            const horaEntrega = new Date().toLocaleString('pt-BR');
+            const tempoEntrega = calcularTempoEntrega(e.dataCriacao, horaEntrega);
+            await updateDoc(doc(db,'entregas_'+loja,firebaseId),{
+                entregue:true,
+                horaEntrega: horaEntrega,
+                entreguePara: document.getElementById('quemRecebeu').value.trim()||'Não informado',
+                tempoEntrega: tempoEntrega
+            });
             document.getElementById('modalEntregue').classList.remove('active'); entregaPendente={loja:null,firebaseId:null}; showToast('📦 Entregue!');
         };
         window.cancelarEntrega = () => { document.getElementById('modalEntregue').classList.remove('active'); entregaPendente={loja:null,firebaseId:null}; };
@@ -441,6 +495,8 @@
                 const esc = (s) => (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
                 const timer = calcularTimer(e.entregaPrevista, e.entregue, e.horaEntrega);
                 const timerHTML = timer.texto ? `<span class="timer ${timer.classe}">${timer.texto}</span>` : '';
+                const tempoFormatado = e.tempoEntrega ? formatarTempo(e.tempoEntrega) : '';
+                const tempoHTML = tempoFormatado ? `<span style="color:#3498db;">⏱ ${tempoFormatado}</span>` : '';
                 return `
                 <div class="result-item ${e.entregue?'entregue':''} ${e.recebido?'recebido':''}">
                     <div class="result-header"><div class="result-info">
@@ -454,6 +510,7 @@
                         ${e.entreguePara?`<span>✅ Recebeu: ${e.entreguePara}</span>`:''}
                         ${e.entregaPrevista?`<span>⏰ Prev: ${e.entregaPrevista} ${timerHTML}</span>`:''}
                         ${e.horaEntrega?`<span style="color:#f39c12;">🚀 ${e.horaEntrega}</span>`:''}
+                        ${tempoHTML?`<span>${tempoHTML}</span>`:''}
                         ${e.trocoValor>0?`<span style="color:#27ae60;font-size:0.75em;">💰 Enviar R$ ${parseFloat(e.trocoValor).toFixed(2).replace('.',',')} de troco</span>`:''}
                     </div>
                     <div style="text-align:right;"><div class="result-value ${e.recebido?'recebido':'pendente'}">R$ ${(e.valorEntrega||0).toFixed(2).replace('.',',')}</div>${e.valorPedido>0?`<div style="font-size:0.7em;opacity:0.6;">Pedido: R$ ${e.valorPedido.toFixed(2).replace('.',',')}</div>`:''}</div></div>
