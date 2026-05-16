@@ -129,7 +129,7 @@
             <img id="preview" class="preview-img" alt="Preview" onclick="expandirFoto(this.src)">
             <div class="form-grid">
                 <div class="form-group"><label>👤 Nome</label><input type="text" id="nome" placeholder="Nome do cliente"></div>
-                <div class="form-group"><label>🆔 iFood</label><div class="checkbox-group"><input type="checkbox" id="temIdIfood"><label>iFood</label></div></div>
+                <div class="form-group"><label>🆔 ID iFood</label><input type="text" id="idIfood" placeholder="Localizador (8 dígitos)"></div>
                 <div class="form-group full"><label>📍 Endereço</label><input type="text" id="endereco" placeholder="Rua, número"></div>
                 <div class="form-group full"><label>🏢 Complemento</label><input type="text" id="complemento" placeholder="Bloco, apto, referência"></div>
                 <div class="form-group"><label>🏘 Bairro</label><input type="text" id="bairro" placeholder="Bairro"></div>
@@ -391,7 +391,7 @@
             
             const e = {
                 nome: document.getElementById('nome')?.value?.trim() || 'Não informado',
-                temIdIfood: document.getElementById('temIdIfood')?.checked || false,
+                idIfood: document.getElementById('idIfood')?.value?.trim() || '',
                 endereco: document.getElementById('endereco')?.value?.trim() || 'Não informado',
                 complemento: document.getElementById('complemento')?.value?.trim() || '',
                 bairro: document.getElementById('bairro')?.value?.trim() || 'Não informado',
@@ -419,8 +419,8 @@
         };
 
         window.limparFormulario = () => {
-            ['nome','endereco','complemento','bairro','entregarPara','pedidoAceito','entregaPrevista','valorEntrega','valorPedido','trocoPara'].forEach(c=>{const el=document.getElementById(c);if(el)el.value='';});
-            ['temIdIfood','dinheiro','cartao'].forEach(c=>{const el=document.getElementById(c);if(el)el.checked=false;});
+            ['nome','idIfood','endereco','complemento','bairro','entregarPara','pedidoAceito','entregaPrevista','valorEntrega','valorPedido','trocoPara'].forEach(c=>{const el=document.getElementById(c);if(el)el.value='';});
+            ['dinheiro','cartao'].forEach(c=>{const el=document.getElementById(c);if(el)el.checked=false;});
             document.getElementById('loja-minas').checked = false;
             document.getElementById('loja-shopping').checked = false;
             document.getElementById('loja-proenca').checked = false;
@@ -468,7 +468,25 @@
         };
 
         window.abrirMaps = (end) => { window.open('https://www.google.com/maps/search/'+encodeURIComponent(end+', Catanduva - SP'),'_blank'); };
-        window.abrirIfood = () => window.open(LINK_IFOOD,'_blank');
+
+        window.abrirIfood = (idIfood) => {
+            if (idIfood) {
+                const idLimpo = idIfood.replace(/\s/g, '');
+                navigator.clipboard.writeText(idLimpo).then(() => {
+                    showToast('📋 ID copiado! Cole no site', false, true);
+                }).catch(() => {
+                    const input = document.createElement('input');
+                    input.value = idLimpo;
+                    document.body.appendChild(input);
+                    input.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(input);
+                    showToast('📋 ID copiado!', false, true);
+                });
+            }
+            window.open(LINK_IFOOD, '_blank');
+        };
+
         window.removerEntrega = async (loja,firebaseId) => { if(!confirm('Remover?'))return; await deleteDoc(doc(db,'entregas_'+loja,firebaseId)); };
 
         function renderizarLoja(loja) {
@@ -504,7 +522,7 @@
                         <span class="data-criacao">📅 ${new Date(e.dataCriacao).toLocaleString('pt-BR')}</span>
                         <span>📍 <span class="clickable" onclick="abrirMaps('${esc(e.endereco)}')">${e.endereco} 🗺</span></span>
                         ${e.complemento?`<span>🏢 ${e.complemento}</span>`:''}<span>🏘 ${e.bairro}</span>
-                        ${e.temIdIfood?`<span>🆔 <span class="clickable" onclick="abrirIfood()">Abrir iFood 🔗</span></span>`:''}
+                        ${e.idIfood?`<span>🆔 <span class="clickable" onclick="abrirIfood('${esc(e.idIfood)}')">Abrir iFood 🔗</span></span>`:''}
                         ${e.entregarPara?`<span>📦 Para: ${e.entregarPara}</span>`:''}
                         ${e.entreguePara?`<span>✅ Recebeu: ${e.entreguePara}</span>`:''}
                         ${e.entregaPrevista?`<span>⏰ Prev: ${e.entregaPrevista} ${timerHTML}</span>`:''}
@@ -568,4 +586,4 @@
         };
     </script>
 </body>
-</html>
+    </html>
