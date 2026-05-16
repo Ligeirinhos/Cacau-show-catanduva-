@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cacau Show - Entregas</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23BF9D16' width='100' height='100' rx='15'/%3E%3Ctext y='.85em' font-size='55' x='50%25' text-anchor='middle'%3E🍫%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect fill='%23BF9D16' width='192' height='192' rx='25'/%3E%3Ctext y='.82em' font-size='100' x='50%25' text-anchor='middle'%3E🍫%3C/text%3E%3C/svg%3E">
+    <meta name="theme-color" content="#352727">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <style>
+        :root { --marrom: #352727; --dourado: #BF9D16; --creme: #F5F2EB; --marrom-escuro: #1f1616; --marrom-claro: #4a3838; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--marrom); color: var(--creme); min-height: 100vh; padding: 10px; }
+        .container { max-width: 850px; margin: 0 auto; }
+        h1 { text-align: center; color: var(--dourado); margin-bottom: 5px; font-size: 1.4em; }
+        .subtitle { text-align: center; color: var(--creme); opacity: 0.7; font-size: 0.85em; margin-bottom: 10px; }
+        .sync-status { text-align: center; font-size: 0.7em; margin-bottom: 8px; }
+        .sync-status.online { color: #27ae60; } .sync-status.offline { color: #e74c3c; }
+        
+        .tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+        .tab { flex: 1; min-width: 70px; padding: 8px 6px; background: var(--marrom-escuro); border: 2px solid transparent; color: var(--creme); cursor: pointer; border-radius: 8px; font-size: 0.75em; text-align: center; transition: all 0.2s; line-height: 1.3; }
+        .tab.active { background: var(--dourado); color: var(--marrom); font-weight: bold; border-color: var(--dourado); }
+        .tab .contador { font-size: 0.65em; opacity: 0.8; display: block; margin-top: 2px; }
+        .tab.active .contador { opacity: 1; }
+        .tab.consolidada { border-color: var(--dourado); } .tab.consolidada.active { background: var(--dourado); color: var(--marrom); }
+        .tab-content { display: none; } .tab-content.active { display: block; }
+
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .dash-item { background: var(--marrom-escuro); padding: 12px; border-radius: 10px; text-align: center; }
+        .dash-item.receber { border: 2px solid #e74c3c; } .dash-item.recebido { border: 2px solid #27ae60; }
+        .dash-item .number { font-size: 1.6em; font-weight: bold; }
+        .dash-item.receber .number { color: #e74c3c; } .dash-item.recebido .number { color: #27ae60; }
+        .dash-item .label { font-size: 0.8em; margin-top: 3px; color: var(--creme); opacity: 0.8; }
+
+        .card { background: var(--marrom-claro); border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid var(--dourado); }
+        .card h2 { font-size: 1em; margin-bottom: 10px; color: var(--dourado); }
+        .upload-area { border: 2px dashed var(--dourado); border-radius: 12px; padding: 15px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 12px; background: var(--marrom-escuro); }
+        .upload-area:hover { background: rgba(191,157,22,0.1); border-color: var(--creme); }
+        .upload-btns { display: flex; gap: 6px; margin-top: 8px; justify-content: center; }
+        .preview-img { max-width: 100%; max-height: 200px; border-radius: 8px; margin: 8px 0; display: none; cursor: pointer; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .form-group { margin-bottom: 6px; } .form-group.full { grid-column: 1 / -1; }
+        .form-group label { display: block; font-size: 0.75em; color: var(--dourado); margin-bottom: 2px; }
+        .form-group input { width: 100%; background: var(--marrom-escuro); border: 1px solid var(--dourado); border-radius: 8px; color: var(--creme); padding: 7px 8px; font-size: 0.85em; }
+        .form-group input:focus { outline: none; border-color: var(--creme); }
+        .checkbox-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .checkbox-group input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--dourado); }
+        .checkbox-group label { font-size: 0.8em; color: var(--creme); margin-right: 10px; cursor: pointer; }
+        .troco-field { display: none; margin-top: 6px; } .troco-field.active { display: block; }
+        .troco-field input { width: 100%; background: var(--marrom-escuro); border: 1px solid #e74c3c; border-radius: 8px; color: var(--creme); padding: 6px 8px; font-size: 0.8em; }
+        .troco-info { color: #27ae60; font-size: 0.8em; margin-top: 4px; display: none; } .troco-info.active { display: block; }
+        .btn { color: var(--marrom); border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9em; transition: all 0.3s; margin: 3px; font-weight: bold; }
+        .btn-primary { background: var(--dourado); } .btn-primary:hover { background: #d4b020; }
+        .btn-secondary { background: var(--marrom-escuro); color: var(--dourado); border: 1px solid var(--dourado); } .btn-secondary:hover { background: var(--marrom); }
+        .btn-success { background: #27ae60; color: #fff; } .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-small { padding: 4px 10px; font-size: 0.75em; } .btn-block { width: 100%; margin: 4px 0; }
+        .result-item { background: var(--marrom-escuro); padding: 10px; border-radius: 8px; margin-bottom: 6px; }
+        .result-item.entregue { border-left: 4px solid #f39c12; } .result-item.recebido { border-left: 4px solid #27ae60; opacity: 0.9; }
+        .result-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 6px; }
+        .result-info { flex: 1; min-width: 160px; }
+        .result-info strong { color: var(--dourado); display: block; margin-bottom: 2px; font-size: 1em; }
+        .result-info .pedido-aceito { font-size: 0.75em; color: #f39c12; display: block; margin-bottom: 1px; }
+        .result-info .data-criacao { font-size: 0.65em; opacity: 0.5; display: block; margin-bottom: 4px; }
+        .result-info span { font-size: 0.8em; color: var(--creme); opacity: 0.8; display: block; margin-bottom: 1px; }
+        .clickable { cursor: pointer; text-decoration: underline; color: var(--dourado); }
+        .result-value { font-size: 1.2em; font-weight: bold; min-width: 70px; text-align: right; }
+        .result-value.recebido { color: #27ae60; } .result-value.pendente { color: #e74c3c; }
+        .result-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+        .badge { display: inline-block; padding: 1px 5px; border-radius: 8px; font-size: 0.6em; font-weight: bold; margin-left: 3px; }
+        .badge.entregue { background: #f39c12; color: #000; } .badge.recebido { background: #27ae60; color: #fff; }
+        .badge.dinheiro { background: #27ae60; color: #fff; } .badge.cartao { background: #3498db; color: #fff; } .badge.troco { background: #e74c3c; color: #fff; }
+        .foto-entrega { max-width: 100%; max-height: 120px; border-radius: 8px; margin-top: 6px; cursor: pointer; }
+        .foto-entrega:hover { opacity: 0.9; }
+        .timer { font-weight: bold; font-size: 0.8em; }
+        .timer.faltando { color: #f39c12; } .timer.atrasado { color: #e74c3c; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        .tempo-entrega { font-size: 0.8em; color: #3498db; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #27ae60; color: #fff; padding: 10px 18px; border-radius: 8px; z-index: 1000; animation: fadeIn 0.3s; font-weight: bold; }
+        .toast.centro { bottom: 50%; right: 50%; transform: translate(50%, 50%); font-size: 1.2em; padding: 15px 25px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } }
+        .toast.error { background: #e74c3c; }
+        .empty-state { text-align: center; color: var(--creme); opacity: 0.5; padding: 15px; font-size: 0.9em; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--marrom-claro); padding: 18px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; border: 2px solid var(--dourado); }
+        .modal-content h3 { color: var(--dourado); margin-bottom: 12px; }
+        .modal-content input { width: 100%; background: var(--marrom-escuro); border: 1px solid var(--dourado); border-radius: 8px; color: var(--creme); padding: 8px; font-size: 0.95em; margin-bottom: 10px; }
+        .modal-btns { display: flex; gap: 6px; justify-content: center; }
+        .foto-fullscreen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 3000; justify-content: center; align-items: center; cursor: pointer; }
+        .foto-fullscreen.active { display: flex; } .foto-fullscreen img { max-width: 95%; max-height: 95%; border-radius: 12px; }
+        .edit-fields { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--dourado); } .edit-fields.active { display: block; }
+        .edit-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+        .edit-row input { width: 100%; background: var(--marrom); border: 1px solid var(--dourado); border-radius: 6px; color: var(--creme); padding: 5px 7px; font-size: 0.8em; }
+        .edit-row label { font-size: 0.7em; color: var(--dourado); display: block; margin-bottom: 2px; }
+        .filter-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+        .filter-row input { background: var(--marrom-escuro); border: 1px solid var(--dourado); border-radius: 8px; color: var(--creme); padding: 6px 8px; font-size: 0.8em; width: 130px; }
+        .filter-row label { font-size: 0.8em; color: var(--dourado); }
+        .consolidado-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .consolidado-item { background: var(--marrom-escuro); padding: 12px; border-radius: 10px; text-align: center; border: 1px solid var(--dourado); }
+        .consolidado-item .number { font-size: 1.8em; font-weight: bold; color: var(--dourado); }
+        .consolidado-item .label { font-size: 0.8em; color: var(--creme); opacity: 0.8; margin-top: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍫 Cacau Show - Entregas</h1>
+        <p class="subtitle">Catanduva - SP</p>
+        <p class="sync-status" id="syncStatus">🔄 Conectando...</p>
+        
+        <!-- NOVA ENTREGA FIXA -->
+        <div class="card">
+            <h2>📸 Nova Entrega</h2>
+            <div class="form-group full">
+                <label>🏪 Lojas</label>
+                <div class="checkbox-group" id="lojasCheckbox">
+                    <input type="checkbox" id="loja-minas"><label for="loja-minas">🏪 Minas</label>
+                    <input type="checkbox" id="loja-shopping"><label for="loja-shopping">🛍 Shopping</label>
+                    <input type="checkbox" id="loja-proenca"><label for="loja-proenca">🏘 Proença</label>
+                </div>
+            </div>
+            <div class="upload-area" id="uploadArea"><div>📤</div><p>Toque para adicionar imagem</p>
+                <div class="upload-btns">
+                    <button class="btn btn-secondary btn-small" onclick="abrirGaleria()">🖼 Galeria</button>
+                    <button class="btn btn-secondary btn-small" onclick="abrirCamera()">📷 Câmera</button>
+                </div>
+                <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
+            </div>
+            <img id="preview" class="preview-img" alt="Preview" onclick="expandirFoto(this.src)">
+            <div class="form-grid">
+                <div class="form-group"><label>👤 Nome</label><input type="text" id="nome" placeholder="Nome do cliente"></div>
+                <div class="form-group"><label>🆔 iFood</label><div class="checkbox-group"><input type="checkbox" id="temIdIfood"><label>iFood</label></div></div>
+                <div class="form-group full"><label>📍 Endereço</label><input type="text" id="endereco" placeholder="Rua, número"></div>
+                <div class="form-group full"><label>🏢 Complemento</label><input type="text" id="complemento" placeholder="Bloco, apto, referência"></div>
+                <div class="form-group"><label>🏘 Bairro</label><input type="text" id="bairro" placeholder="Bairro"></div>
+                <div class="form-group"><label>📦 Entregar para</label><input type="text" id="entregarPara" placeholder="Nome no pedido"></div>
+                <div class="form-group"><label>🕐 Pedido aceito</label><input type="text" id="pedidoAceito" placeholder="Horário"></div>
+                <div class="form-group"><label>⏰ Previsão</label><input type="text" id="entregaPrevista" placeholder="Horário Previsto"></div>
+                <div class="form-group"><label>💰 Valor Entrega (R$)</label><input type="number" id="valorEntrega" placeholder="0,00" step="0.01"></div>
+                <div class="form-group"><label>🛒 Valor Pedido (R$)</label><input type="number" id="valorPedido" placeholder="0,00" step="0.01" onchange="calcularTroco()"></div>
+                <div class="form-group full">
+                    <label>💳 Forma de Pagamento</label>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="dinheiro" onchange="toggleTroco()"><label>💵 Dinheiro</label>
+                        <input type="checkbox" id="cartao"><label>💳 Cartão</label>
+                    </div>
+                    <div class="troco-field" id="trocoField">
+                        <label style="color:#e74c3c;">💱 Troco para qual valor?</label>
+                        <input type="number" id="trocoPara" placeholder="Ex: 50,00" step="0.01" onchange="calcularTroco()">
+                        <div class="troco-info" id="trocoInfo">💰 Enviar R$ 0,00 de troco</div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-block" onclick="adicionarEntrega()">💾 Salvar</button>
+            <button class="btn btn-secondary btn-block" onclick="limparFormulario()">✕ Limpar</button>
+        </div>
+
+        <!-- TABS COM CONTADOR -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('minas')">🏪 Minas<span class="contador" id="contador-minas">0/0</span></button>
+            <button class="tab" onclick="switchTab('shopping')">🛍 Shopping<span class="contador" id="contador-shopping">0/0</span></button>
+            <button class="tab" onclick="switchTab('proenca')">🏘 Proença<span class="contador" id="contador-proenca">0/0</span></button>
+            <button class="tab consolidada" onclick="switchTab('consolidadas')">📊 Consolidadas</button>
+        </div>
+
+        <div class="tab-content active" id="tab-minas">
+            <div class="dashboard"><div class="dash-item receber"><div class="number" id="pendente-minas">R$ 0,00</div><div class="label">💸 A Receber (hoje)</div></div><div class="dash-item recebido"><div class="number" id="recebido-minas">R$ 0,00</div><div class="label">✅ Recebido (hoje)</div></div></div>
+            <div class="card"><h2>📋 Entregas - Minas</h2><div id="resultsList-minas"><p class="empty-state">Carregando...</p></div></div>
+        </div>
+        <div class="tab-content" id="tab-shopping">
+            <div class="dashboard"><div class="dash-item receber"><div class="number" id="pendente-shopping">R$ 0,00</div><div class="label">💸 A Receber (hoje)</div></div><div class="dash-item recebido"><div class="number" id="recebido-shopping">R$ 0,00</div><div class="label">✅ Recebido (hoje)</div></div></div>
+            <div class="card"><h2>📋 Entregas - Shopping</h2><div id="resultsList-shopping"><p class="empty-state">Carregando...</p></div></div>
+        </div>
+        <div class="tab-content" id="tab-proenca">
+            <div class="dashboard"><div class="dash-item receber"><div class="number" id="pendente-proenca">R$ 0,00</div><div class="label">💸 A Receber (hoje)</div></div><div class="dash-item recebido"><div class="number" id="recebido-proenca">R$ 0,00</div><div class="label">✅ Recebido (hoje)</div></div></div>
+            <div class="card"><h2>📋 Entregas - Proença</h2><div id="resultsList-proenca"><p class="empty-state">Carregando...</p></div></div>
+        </div>
+        
+        <!-- CONSOLIDADAS -->
+        <div class="tab-content" id="tab-consolidadas">
+            <div class="card">
+                <h2>📊 Filtro por Período</h2>
+                <div class="filter-row">
+                    <label>Início:</label><input type="date" id="dataInicio">
+                    <label>Fim:</label><input type="date" id="dataFim">
+                    <button class="btn btn-primary btn-small" onclick="atualizarConsolidadas()">🔍 Filtrar</button>
+                </div>
+                <div class="consolidado-grid">
+                    <div class="consolidado-item"><div class="number" id="consValorTotal">R$ 0,00</div><div class="label">💰 Valor Total</div></div>
+                    <div class="consolidado-item"><div class="number" id="consQtdTotal">0</div><div class="label">📦 Total Entregas</div></div>
+                    <div class="consolidado-item"><div class="number" id="consValorPendente">R$ 0,00</div><div class="label">💸 A Receber</div></div>
+                    <div class="consolidado-item"><div class="number" id="consValorRecebido">R$ 0,00</div><div class="label">✅ Recebido</div></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                    <div class="consolidado-item"><div class="number" id="consMinas">0</div><div class="label">🏪 Minas</div></div>
+                    <div class="consolidado-item"><div class="number" id="consShopping">0</div><div class="label">🛍 Shopping</div></div>
+                    <div class="consolidado-item"><div class="number" id="consProenca">0</div><div class="label">🏘 Proença</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modalEntregue"><div class="modal-content"><h3>📦 Pedido Entregue!</h3><p>Quem recebeu?</p><input type="text" id="quemRecebeu" placeholder="Nome"><div class="modal-btns"><button class="btn btn-primary" onclick="confirmarEntrega()">✅ Confirmar</button><button class="btn btn-secondary" onclick="cancelarEntrega()">Cancelar</button></div></div></div>
+    <div class="foto-fullscreen" id="fotoFullscreen" onclick="this.classList.remove('active')"><img id="fotoExpandida" src="" alt="Foto"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        
+        const fb = initializeApp({ apiKey: "AIzaSyDJiTkxIwO5_Sh5AksXwmfWl0NnzmhMnqM", authDomain: "cacau-show-catanduva.firebaseapp.com", projectId: "cacau-show-catanduva", storageBucket: "cacau-show-catanduva.firebasestorage.app", messagingSenderId: "213727212413", appId: "1:213727212413:web:e63419fbec41dceb881214" });
+        const db = getFirestore(fb);
+        const LOJAS = ['minas', 'shopping', 'proenca'];
+        const LINK_IFOOD = 'https://confirmacao-entrega-propria.ifood.com.br/numero-pedido';
+        let dados = { minas: [], shopping: [], proenca: [] };
+        let imagemAtual = null;
+        let entregaPendente = { loja: null, firebaseId: null };
+        let timerInterval = null;
+
+        function hoje() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+        function amanha() { const d = hoje(); d.setDate(d.getDate()+1); return d; }
+
+        function updateSyncStatus(online) {
+            const el = document.getElementById('syncStatus');
+            el.textContent = online ? '🟢 Online' : '🔴 Offline';
+            el.className = 'sync-status ' + (online ? 'online' : 'offline');
+        }
+
+        function calcularTempoEntrega(dataCriacao, horaEntrega) {
+            if (!dataCriacao || !horaEntrega) return null;
+            try {
+                const inicio = new Date(dataCriacao);
+                const partesHora = horaEntrega.split(' ');
+                const dataHora = partesHora.length > 1 ? partesHora[1] : horaEntrega;
+                const [h, m] = dataHora.split(':').map(Number);
+                const fim = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate(), h, m);
+                const diffMin = Math.round((fim - inicio) / 60000);
+                if (diffMin < 0) return Math.abs(diffMin);
+                return diffMin;
+            } catch(e) { return null; }
+        }
+
+        function formatarTempo(minutos) {
+            if (minutos === null || minutos === undefined) return '';
+            if (minutos < 60) return `${minutos}min`;
+            const h = Math.floor(minutos / 60);
+            const m = minutos % 60;
+            return `${h}h${m > 0 ? m.toString().padStart(2,'0') : ''}`;
+        }
+
+        function calcularTimer(entregaPrevista, entregue, horaEntrega) {
+            if (!entregaPrevista) return { texto: '', classe: '' };
+            
+            let dataPrevista;
+            const agora = new Date();
+            const dataReferencia = entregue && horaEntrega ? new Date(horaEntrega.split('/').reverse().join('-') + 'T' + horaEntrega.split(' ')[1]) : agora;
+            
+            if (entregaPrevista.includes('/')) {
+                const partes = entregaPrevista.split(' ');
+                const dataStr = partes[0];
+                const horaStr = partes[1] || '00:00';
+                const dataPartes = dataStr.split('/');
+                if (dataPartes.length === 2) {
+                    dataPrevista = new Date(dataReferencia.getFullYear(), dataPartes[1]-1, dataPartes[0], ...horaStr.split(':').map(Number));
+                } else if (dataPartes.length === 3) {
+                    dataPrevista = new Date(dataPartes[2], dataPartes[1]-1, dataPartes[0], ...horaStr.split(':').map(Number));
+                }
+            } else if (entregaPrevista.includes(':')) {
+                const [h, m] = entregaPrevista.split(':').map(Number);
+                dataPrevista = new Date(dataReferencia.getFullYear(), dataReferencia.getMonth(), dataReferencia.getDate(), h, m);
+            } else {
+                return { texto: '', classe: '' };
+            }
+            
+            if (isNaN(dataPrevista.getTime())) return { texto: '', classe: '' };
+            
+            const diff = dataPrevista - dataReferencia;
+            const diffMin = Math.round(diff / 60000);
+            
+            if (entregue) {
+                if (diffMin > 0) return { texto: `✅ ${diffMin}min adiantado`, classe: '' };
+                if (diffMin < 0) return { texto: `⚠️ ${Math.abs(diffMin)}min atrasado`, classe: 'atrasado' };
+                return { texto: `✅ No horário`, classe: '' };
+            } else {
+                if (diffMin < 0) {
+                    const atraso = Math.abs(diffMin);
+                    if (atraso < 60) return { texto: `🚨 Atrasado ${atraso}min`, classe: 'atrasado' };
+                    const hA = Math.floor(atraso / 60);
+                    const mA = atraso % 60;
+                    return { texto: `🚨 Atrasado ${hA}h${mA > 0 ? mA.toString().padStart(2,'0') : ''}`, classe: 'atrasado' };
+                } else if (diffMin === 0) {
+                    return { texto: `⏰ Agora!`, classe: 'faltando' };
+                } else {
+                    if (diffMin < 60) return { texto: `⏰ Falta ${diffMin}min`, classe: 'faltando' };
+                    const hF = Math.floor(diffMin / 60);
+                    const mF = diffMin % 60;
+                    return { texto: `⏰ Falta ${hF}h${mF > 0 ? mF.toString().padStart(2,'0') : ''}`, classe: 'faltando' };
+                }
+            }
+        }
+
+        LOJAS.forEach(loja => {
+            const q = query(collection(db, 'entregas_' + loja), orderBy('dataCriacao', 'desc'));
+            onSnapshot(q, (snapshot) => {
+                dados[loja] = [];
+                snapshot.forEach(doc => dados[loja].push({ ...doc.data(), firebaseId: doc.id }));
+                renderizarLoja(loja);
+                atualizarContadores();
+                updateSyncStatus(true);
+            }, () => updateSyncStatus(false));
+        });
+
+        function iniciarTimers() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                LOJAS.forEach(loja => renderizarLoja(loja));
+                atualizarContadores();
+            }, 30000);
+        }
+        iniciarTimers();
+
+        function atualizarContadores() {
+            const hojeInicio = hoje(), hojeFim = amanha();
+            LOJAS.forEach(loja => {
+                const entregasHoje = (dados[loja] || []).filter(e => {
+                    const d = new Date(e.dataCriacao);
+                    return d >= hojeInicio && d < hojeFim;
+                });
+                const total = entregasHoje.length;
+                const entregues = entregasHoje.filter(e => e.entregue).length;
+                const contadorEl = document.getElementById('contador-' + loja);
+                if (contadorEl) {
+                    contadorEl.textContent = total > 0 ? `${entregues}/${total}` : '0/0';
+                }
+            });
+        }
+
+        window.calcularTroco = () => {
+            const vp = parseFloat(document.getElementById('valorPedido')?.value) || 0;
+            const tp = parseFloat(document.getElementById('trocoPara')?.value) || 0;
+            const info = document.getElementById('trocoInfo');
+            if (tp > vp && vp > 0) { info.textContent = '💰 Enviar R$ ' + (tp-vp).toFixed(2).replace('.',',') + ' de troco'; info.classList.add('active'); }
+            else info.classList.remove('active');
+        };
+
+        window.toggleTroco = () => {
+            const d = document.getElementById('dinheiro');
+            document.getElementById('trocoField').classList.toggle('active', d?.checked);
+            if (!d?.checked) { document.getElementById('trocoPara').value = ''; document.getElementById('trocoInfo').classList.remove('active'); }
+            calcularTroco();
+        };
+
+        window.abrirGaleria = () => { const i = document.getElementById('fileInput'); i.removeAttribute('capture'); i.click(); };
+        window.abrirCamera = () => { const i = document.getElementById('fileInput'); i.setAttribute('capture','environment'); i.click(); };
+
+        window.handleFile = (file) => {
+            if (!file || !file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const c = document.createElement('canvas'); const MW=600; let w=img.width, h=img.height;
+                    if(w>MW){h=(h*MW)/w; w=MW;} c.width=w; c.height=h;
+                    c.getContext('2d').drawImage(img,0,0,w,h);
+                    imagemAtual = c.toDataURL('image/jpeg',0.5);
+                    const p = document.getElementById('preview'); p.src=imagemAtual; p.style.display='block';
+                }; img.src = e.target.result;
+            }; reader.readAsDataURL(file);
+        };
+
+        window.expandirFoto = (src) => { document.getElementById('fotoExpandida').src=src; document.getElementById('fotoFullscreen').classList.add('active'); };
+
+        window.switchTab = (loja) => {
+            document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+            document.querySelector(`.tab:nth-child(${{minas:1,shopping:2,proenca:3,consolidadas:4}[loja]})`).classList.add('active');
+            document.getElementById('tab-'+loja).classList.add('active');
+            if(loja==='consolidadas') atualizarConsolidadas();
+        };
+
+        window.adicionarEntrega = async () => {
+            const lojasSelecionadas = [];
+            if(document.getElementById('loja-minas')?.checked) lojasSelecionadas.push('minas');
+            if(document.getElementById('loja-shopping')?.checked) lojasSelecionadas.push('shopping');
+            if(document.getElementById('loja-proenca')?.checked) lojasSelecionadas.push('proenca');
+            
+            if(lojasSelecionadas.length === 0) { showToast('❌ A entrada para qual loja?', true, true); return; }
+
+            const din = document.getElementById('dinheiro')?.checked || false;
+            const vp = parseFloat(document.getElementById('valorPedido')?.value) || 0;
+            const tp = din ? (parseFloat(document.getElementById('trocoPara')?.value) || 0) : 0;
+            
+            const e = {
+                nome: document.getElementById('nome')?.value?.trim() || 'Não informado',
+                temIdIfood: document.getElementById('temIdIfood')?.checked || false,
+                endereco: document.getElementById('endereco')?.value?.trim() || 'Não informado',
+                complemento: document.getElementById('complemento')?.value?.trim() || '',
+                bairro: document.getElementById('bairro')?.value?.trim() || 'Não informado',
+                entregarPara: document.getElementById('entregarPara')?.value?.trim() || '',
+                entreguePara: '', pedidoAceito: document.getElementById('pedidoAceito')?.value?.trim() || '',
+                entregaPrevista: document.getElementById('entregaPrevista')?.value?.trim() || '',
+                dinheiro: din, cartao: document.getElementById('cartao')?.checked || false,
+                trocoPara: tp, trocoValor: (tp>vp)?tp-vp:0,
+                valorEntrega: parseFloat(document.getElementById('valorEntrega')?.value) || 0,
+                valorPedido: vp, imagem: imagemAtual,
+                entregue: false, recebido: false,
+                dataCriacao: new Date().toISOString(), horaEntrega: null,
+                tempoEntrega: null
+            };
+            
+            if(e.nome==='Não informado'){showToast('⚠️ Preencha o nome',true);return;}
+            
+            try {
+                for(const loja of lojasSelecionadas) {
+                    await addDoc(collection(db,'entregas_'+loja), e);
+                }
+                limparFormulario();
+                showToast('✅ Salvo em '+lojasSelecionadas.length+' loja(s)!');
+            } catch(err) { showToast('❌ Erro',true); }
+        };
+
+        window.limparFormulario = () => {
+            ['nome','endereco','complemento','bairro','entregarPara','pedidoAceito','entregaPrevista','valorEntrega','valorPedido','trocoPara'].forEach(c=>{const el=document.getElementById(c);if(el)el.value='';});
+            ['temIdIfood','dinheiro','cartao'].forEach(c=>{const el=document.getElementById(c);if(el)el.checked=false;});
+            document.getElementById('loja-minas').checked = false;
+            document.getElementById('loja-shopping').checked = false;
+            document.getElementById('loja-proenca').checked = false;
+            document.getElementById('trocoField').classList.remove('active');
+            document.getElementById('trocoInfo').classList.remove('active');
+            imagemAtual=null; document.getElementById('preview').style.display='none'; document.getElementById('fileInput').value='';
+        };
+
+        window.toggleEntregue = (loja, firebaseId) => {
+            const e = dados[loja].find(x=>x.firebaseId===firebaseId);
+            if(!e)return;
+            if(!e.entregue){ entregaPendente={loja,firebaseId}; document.getElementById('quemRecebeu').value=''; document.getElementById('modalEntregue').classList.add('active'); }
+            else updateDoc(doc(db,'entregas_'+loja,firebaseId),{entregue:false,horaEntrega:null,entreguePara:'',tempoEntrega:null});
+        };
+
+        window.confirmarEntrega = async () => {
+            const {loja,firebaseId}=entregaPendente;
+            const e = dados[loja].find(x=>x.firebaseId===firebaseId);
+            if(!e) return;
+            const horaEntrega = new Date().toLocaleString('pt-BR');
+            const tempoEntrega = calcularTempoEntrega(e.dataCriacao, horaEntrega);
+            await updateDoc(doc(db,'entregas_'+loja,firebaseId),{
+                entregue:true,
+                horaEntrega: horaEntrega,
+                entreguePara: document.getElementById('quemRecebeu').value.trim()||'Não informado',
+                tempoEntrega: tempoEntrega
+            });
+            document.getElementById('modalEntregue').classList.remove('active'); entregaPendente={loja:null,firebaseId:null}; showToast('📦 Entregue!');
+        };
+        window.cancelarEntrega = () => { document.getElementById('modalEntregue').classList.remove('active'); entregaPendente={loja:null,firebaseId:null}; };
+        window.toggleRecebido = (loja, firebaseId) => { const e=dados[loja].find(x=>x.firebaseId===firebaseId); if(e)updateDoc(doc(db,'entregas_'+loja,firebaseId),{recebido:!e.recebido}); };
+        window.toggleEdit = (loja, firebaseId) => { document.getElementById('edit-'+firebaseId).classList.toggle('active'); };
+
+        window.salvarEdicao = async (loja, firebaseId) => {
+            await updateDoc(doc(db,'entregas_'+loja,firebaseId),{
+                nome: document.getElementById('editNome-'+firebaseId).value,
+                endereco: document.getElementById('editEndereco-'+firebaseId).value,
+                complemento: document.getElementById('editComplemento-'+firebaseId).value,
+                bairro: document.getElementById('editBairro-'+firebaseId).value,
+                entreguePara: document.getElementById('editEntreguePara-'+firebaseId)?.value||'',
+                valorEntrega: parseFloat(document.getElementById('editValor-'+firebaseId).value)||0,
+                valorPedido: parseFloat(document.getElementById('editValorPedido-'+firebaseId).value)||0,
+                trocoPara: parseFloat(document.getElementById('editTrocoPara-'+firebaseId).value)||0
+            }); showToast('✅ Atualizado!');
+        };
+
+        window.abrirMaps = (end) => { window.open('https://www.google.com/maps/search/'+encodeURIComponent(end+', Catanduva - SP'),'_blank'); };
+        window.abrirIfood = () => window.open(LINK_IFOOD,'_blank');
+        window.removerEntrega = async (loja,firebaseId) => { if(!confirm('Remover?'))return; await deleteDoc(doc(db,'entregas_'+loja,firebaseId)); };
+
+        function renderizarLoja(loja) {
+            const lista = dados[loja] || [];
+            const container = document.getElementById('resultsList-'+loja);
+            if(!container)return;
+            
+            const hojeInicio = hoje(), hojeFim = amanha();
+            const entregasHoje = lista.filter(e => {
+                const d = new Date(e.dataCriacao);
+                return d >= hojeInicio && d < hojeFim;
+            });
+            
+            const pendentes = entregasHoje.filter(e=>!e.recebido);
+            const recebidos = entregasHoje.filter(e=>e.recebido);
+            document.getElementById('pendente-'+loja).textContent = 'R$ '+pendentes.reduce((s,e)=>s+(e.valorEntrega||0),0).toFixed(2).replace('.',',');
+            document.getElementById('recebido-'+loja).textContent = 'R$ '+recebidos.reduce((s,e)=>s+(e.valorEntrega||0),0).toFixed(2).replace('.',',');
+            
+            if(!entregasHoje.length){container.innerHTML='<p class="empty-state">Nenhuma entrega hoje</p>';return;}
+            
+            container.innerHTML = entregasHoje.map(e => {
+                const id = e.firebaseId;
+                const esc = (s) => (s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+                const timer = calcularTimer(e.entregaPrevista, e.entregue, e.horaEntrega);
+                const timerHTML = timer.texto ? `<span class="timer ${timer.classe}">${timer.texto}</span>` : '';
+                const tempoFormatado = e.tempoEntrega ? formatarTempo(e.tempoEntrega) : '';
+                const tempoHTML = tempoFormatado ? `<span class="tempo-entrega">⏱ ${tempoFormatado}</span>` : '';
+                return `
+                <div class="result-item ${e.entregue?'entregue':''} ${e.recebido?'recebido':''}">
+                    <div class="result-header"><div class="result-info">
+                        <strong>${e.nome} ${e.entregue?'<span class="badge entregue">📦 Pedido Entregue</span>':''} ${e.recebido?'<span class="badge recebido">💰 Dinheiro no Bolso</span>':''} ${e.dinheiro?'<span class="badge dinheiro">💵 Entrega em Dinheiro</span>':''} ${e.cartao?'<span class="badge cartao">💳 Entrega com Maquininha</span>':''} ${e.trocoValor>0?'<span class="badge troco">💱 R$ '+parseFloat(e.trocoValor).toFixed(2).replace('.',',')+'</span>':''}</strong>
+                        ${e.pedidoAceito?`<span class="pedido-aceito">🕐 Pedido aceito: ${e.pedidoAceito}</span>`:''}
+                        <span class="data-criacao">📅 ${new Date(e.dataCriacao).toLocaleString('pt-BR')}</span>
+                        <span>📍 <span class="clickable" onclick="abrirMaps('${esc(e.endereco)}')">${e.endereco} 🗺</span></span>
+                        ${e.complemento?`<span>🏢 ${e.complemento}</span>`:''}<span>🏘 ${e.bairro}</span>
+                        ${e.temIdIfood?`<span>🆔 <span class="clickable" onclick="abrirIfood()">Abrir iFood 🔗</span></span>`:''}
+                        ${e.entregarPara?`<span>📦 Para: ${e.entregarPara}</span>`:''}
+                        ${e.entreguePara?`<span>✅ Recebeu: ${e.entreguePara}</span>`:''}
+                        ${e.entregaPrevista?`<span>⏰ Prev: ${e.entregaPrevista} ${timerHTML}</span>`:''}
+                        ${e.horaEntrega?`<span style="color:#f39c12;">🚀 ${e.horaEntrega}</span>`:''}
+                        ${tempoHTML?`<span>${tempoHTML}</span>`:''}
+                        ${e.trocoValor>0?`<span style="color:#27ae60;font-size:0.75em;">💰 Enviar R$ ${parseFloat(e.trocoValor).toFixed(2).replace('.',',')} de troco</span>`:''}
+                    </div>
+                    <div style="text-align:right;"><div class="result-value ${e.recebido?'recebido':'pendente'}">R$ ${(e.valorEntrega||0).toFixed(2).replace('.',',')}</div>${e.valorPedido>0?`<div style="font-size:0.7em;opacity:0.6;">Pedido: R$ ${e.valorPedido.toFixed(2).replace('.',',')}</div>`:''}</div></div>
+                    ${e.imagem?`<img src="${e.imagem}" class="foto-entrega" onclick="expandirFoto('${e.imagem}')" loading="lazy" alt="Foto">`:''}
+                    <div class="result-actions">
+                        <button class="btn ${e.entregue?'btn-success':'btn-primary'} btn-small" onclick="toggleEntregue('${loja}','${id}')">${e.entregue?'✅ Entregue':'📦 Entregue'}</button>
+                        <button class="btn ${e.recebido?'btn-success':'btn-primary'} btn-small" onclick="toggleRecebido('${loja}','${id}')">${e.recebido?'✅ Recebido':'💰 Recebido'}</button>
+                        <button class="btn btn-secondary btn-small" onclick="toggleEdit('${loja}','${id}')">✏️</button>
+                        <button class="btn btn-secondary btn-small" onclick="removerEntrega('${loja}','${id}')">🗑</button>
+                    </div>
+                    <div class="edit-fields" id="edit-${id}">
+                        <div class="edit-row"><div><label>Nome</label><input value="${esc(e.nome)}" id="editNome-${id}"></div><div><label>Endereço</label><input value="${esc(e.endereco)}" id="editEndereco-${id}"></div></div>
+                        <div class="edit-row"><div><label>Complemento</label><input value="${esc(e.complemento||'')}" id="editComplemento-${id}"></div><div><label>Bairro</label><input value="${esc(e.bairro)}" id="editBairro-${id}"></div></div>
+                        <div class="edit-row"><div><label>Entregue para</label><input value="${esc(e.entreguePara||'')}" id="editEntreguePara-${id}"></div></div>
+                        <div class="edit-row"><div><label>Valor Entrega</label><input type="number" step="0.01" value="${e.valorEntrega||0}" id="editValor-${id}"></div><div><label>Valor Pedido</label><input type="number" step="0.01" value="${e.valorPedido||0}" id="editValorPedido-${id}"></div></div>
+                        <div class="edit-row"><div><label>Troco para</label><input type="number" step="0.01" value="${e.trocoPara||0}" id="editTrocoPara-${id}"></div></div>
+                        <button class="btn btn-primary btn-small" onclick="salvarEdicao('${loja}','${id}')">💾 Salvar</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        window.atualizarConsolidadas = () => {
+            const inicio = document.getElementById('dataInicio')?.value || '';
+            const fim = document.getElementById('dataFim')?.value || '';
+            const hojeInicio = hoje(), hojeFim = amanha();
+            
+            let todas = [];
+            LOJAS.forEach(l => dados[l].forEach(e => {
+                const d = new Date(e.dataCriacao);
+                let ok = true;
+                if (inicio && fim) {
+                    if (new Date(inicio+'T00:00:00') > d) ok = false;
+                    if (new Date(fim+'T23:59:59') < d) ok = false;
+                } else {
+                    if (d < hojeInicio || d >= hojeFim) ok = false;
+                }
+                if (ok) todas.push({...e, loja: l});
+            }));
+            
+            document.getElementById('consValorTotal').textContent = 'R$ '+todas.reduce((s,e)=>s+(e.valorEntrega||0),0).toFixed(2).replace('.',',');
+            document.getElementById('consQtdTotal').textContent = todas.length;
+            document.getElementById('consValorPendente').textContent = 'R$ '+todas.filter(e=>!e.recebido).reduce((s,e)=>s+(e.valorEntrega||0),0).toFixed(2).replace('.',',');
+            document.getElementById('consValorRecebido').textContent = 'R$ '+todas.filter(e=>e.recebido).reduce((s,e)=>s+(e.valorEntrega||0),0).toFixed(2).replace('.',',');
+            document.getElementById('consMinas').textContent = todas.filter(e=>e.loja==='minas').length;
+            document.getElementById('consShopping').textContent = todas.filter(e=>e.loja==='shopping').length;
+            document.getElementById('consProenca').textContent = todas.filter(e=>e.loja==='proenca').length;
+        };
+
+        window.showToast = (msg, err, centro) => {
+            const t = document.createElement('div');
+            t.className = 'toast' + (err ? ' error' : '') + (centro ? ' centro' : '');
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(()=>t.remove(), 2500);
+        };
+    </script>
+</body>
+</html>
