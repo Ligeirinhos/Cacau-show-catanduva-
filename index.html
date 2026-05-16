@@ -72,7 +72,7 @@
         .badge.dinheiro { background: #27ae60; color: #fff; } .badge.cartao { background: #3498db; color: #fff; } .badge.troco { background: #e74c3c; color: #fff; }
         .foto-entrega { max-width: 100%; max-height: 120px; border-radius: 8px; margin-top: 6px; cursor: pointer; }
         .foto-entrega:hover { opacity: 0.9; }
-        .timer { font-weight: bold; font-size: 0.8em; }
+        .timer { font-weight: bold; }
         .timer.faltando { color: #f39c12; } .timer.atrasado { color: #e74c3c; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
         .toast { position: fixed; bottom: 20px; right: 20px; background: #27ae60; color: #fff; padding: 10px 18px; border-radius: 8px; z-index: 1000; animation: fadeIn 0.3s; font-weight: bold; }
@@ -224,7 +224,6 @@
             el.className = 'sync-status ' + (online ? 'online' : 'offline');
         }
 
-        // Calcula tempo de entrega em minutos
         function calcularTempoEntrega(dataCriacao, horaEntrega) {
             if (!dataCriacao || !horaEntrega) return null;
             try {
@@ -234,12 +233,11 @@
                 const [h, m] = dataHora.split(':').map(Number);
                 const fim = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate(), h, m);
                 const diffMin = Math.round((fim - inicio) / 60000);
-                if (diffMin < 0) return Math.abs(diffMin); // Se negativo, pega valor absoluto
+                if (diffMin < 0) return Math.abs(diffMin);
                 return diffMin;
             } catch(e) { return null; }
         }
 
-        // Formata tempo de entrega
         function formatarTempo(minutos) {
             if (minutos === null || minutos === undefined) return '';
             if (minutos < 60) return `${minutos}min`;
@@ -469,7 +467,26 @@
         };
 
         window.abrirMaps = (end) => { window.open('https://www.google.com/maps/search/'+encodeURIComponent(end+', Catanduva - SP'),'_blank'); };
-        window.abrirIfood = () => window.open(LINK_IFOOD,'_blank');
+
+        // NOVA FUNÇÃO: Copia ID e abre o site do iFood
+        window.abrirIfood = (idIfood) => {
+            if (idIfood) {
+                const idLimpo = idIfood.replace(/\s/g, '');
+                navigator.clipboard.writeText(idLimpo).then(() => {
+                    showToast('📋 ID copiado: ' + idLimpo);
+                }).catch(() => {
+                    const input = document.createElement('input');
+                    input.value = idLimpo;
+                    document.body.appendChild(input);
+                    input.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(input);
+                    showToast('📋 ID copiado: ' + idLimpo);
+                });
+            }
+            window.open(LINK_IFOOD, '_blank');
+        };
+
         window.removerEntrega = async (loja,firebaseId) => { if(!confirm('Remover?'))return; await deleteDoc(doc(db,'entregas_'+loja,firebaseId)); };
 
         function renderizarLoja(loja) {
@@ -505,7 +522,7 @@
                         <span class="data-criacao">📅 ${new Date(e.dataCriacao).toLocaleString('pt-BR')}</span>
                         <span>📍 <span class="clickable" onclick="abrirMaps('${esc(e.endereco)}')">${e.endereco} 🗺</span></span>
                         ${e.complemento?`<span>🏢 ${e.complemento}</span>`:''}<span>🏘 ${e.bairro}</span>
-                        ${e.temIdIfood?`<span>🆔 <span class="clickable" onclick="abrirIfood()">Abrir iFood 🔗</span></span>`:''}
+                        ${e.temIdIfood?`<span>🆔 <span class="clickable" onclick="abrirIfood('${e.idIfood || ''}')">Abrir iFood 🔗</span></span>`:''}
                         ${e.entregarPara?`<span>📦 Para: ${e.entregarPara}</span>`:''}
                         ${e.entreguePara?`<span>✅ Recebeu: ${e.entreguePara}</span>`:''}
                         ${e.entregaPrevista?`<span>⏰ Prev: ${e.entregaPrevista} ${timerHTML}</span>`:''}
