@@ -111,14 +111,6 @@
         <!-- NOVA ENTREGA FIXA -->
         <div class="card">
             <h2>📸 Nova Entrega</h2>
-            <div class="form-group full">
-                <label>🏪 Lojas</label>
-                <div class="checkbox-group" id="lojasCheckbox">
-                    <input type="checkbox" id="loja-minas"><label for="loja-minas">🏪 Minas</label>
-                    <input type="checkbox" id="loja-shopping"><label for="loja-shopping">🛍 Shopping</label>
-                    <input type="checkbox" id="loja-proenca"><label for="loja-proenca">🏘 Proença</label>
-                </div>
-            </div>
             <div class="upload-area" id="uploadArea"><div>📤</div><p>Toque para adicionar imagem</p>
                 <div class="upload-btns">
                     <button class="btn btn-secondary btn-small" onclick="abrirGaleria()">🖼 Galeria</button>
@@ -149,6 +141,15 @@
                         <input type="number" id="trocoPara" placeholder="Ex: 50,00" step="0.01" onchange="calcularTroco()">
                         <div class="troco-info" id="trocoInfo">💰 Enviar R$ 0,00 de troco</div>
                     </div>
+                </div>
+            </div>
+            <!-- Seletor de lojas movido para perto do botão Salvar -->
+            <div class="form-group full" style="margin-top: 12px;">
+                <label>🏪 Lojas</label>
+                <div class="checkbox-group" id="lojasCheckbox">
+                    <input type="checkbox" id="loja-minas"><label for="loja-minas">🏪 Minas</label>
+                    <input type="checkbox" id="loja-shopping"><label for="loja-shopping">🛍 Shopping</label>
+                    <input type="checkbox" id="loja-proenca"><label for="loja-proenca">🏘 Proença</label>
                 </div>
             </div>
             <button class="btn btn-primary btn-block" onclick="adicionarEntrega()">💾 Salvar</button>
@@ -586,4 +587,4 @@
         };
     </script>
 </body>
-    </html>
+</html>
