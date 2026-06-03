@@ -85,13 +85,6 @@
         .edit-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
         .edit-row input { width: 100%; background: var(--marrom); border: 1px solid var(--dourado); border-radius: 6px; color: var(--creme); padding: 5px 7px; font-size: 0.8em; }
         .edit-row label { font-size: 0.7em; color: var(--dourado); display: block; margin-bottom: 2px; }
-        .filter-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-        .filter-row input { background: var(--marrom-escuro); border: 1px solid var(--dourado); border-radius: 8px; color: var(--creme); padding: 6px 8px; font-size: 0.8em; width: 130px; }
-        .filter-row label { font-size: 0.8em; color: var(--dourado); }
-        .consolidado-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-        .consolidado-item { background: var(--marrom-escuro); padding: 12px; border-radius: 10px; text-align: center; border: 1px solid var(--dourado); }
-        .consolidado-item .number { font-size: 1.8em; font-weight: bold; color: var(--dourado); }
-        .consolidado-item .label { font-size: 0.8em; color: var(--creme); opacity: 0.8; margin-top: 3px; }
     </style>
 </head>
 <body>
@@ -157,7 +150,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, query, orderBy, onSnapshot, getDocs, where, deleteField } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
         
         const fb = initializeApp({ apiKey: "AIzaSyDJiTkxIwO5_Sh5AksXwmfWl0NnzmhMnqM", authDomain: "cacau-show-catanduva.firebaseapp.com", projectId: "cacau-show-catanduva", storageBucket: "cacau-show-catanduva.firebasestorage.app", messagingSenderId: "213727212413", appId: "1:213727212413:web:e63419fbec41dceb881214" });
         const db = getFirestore(fb);
@@ -237,9 +230,29 @@
             }
         }
 
-        // LIMPEZA AUTOMÁTICA DE ENTREGAS ANTIGAS
-        async function limparEntregasAntigas() {
-            const hojeInicio = hoje();
-            const camposParaRemover = [
-                'imagem', 'nome', 'endereco', 'complemento', 'bairro',
-                'entregarPara', 'entreguePara', 'pedidoAceito', 'entregaPrevista'
+        // Iniciar listener
+        const q = query(collection(db, 'entregas_' + LOJA), orderBy('dataCriacao', 'desc'));
+        onSnapshot(q, (snapshot) => {
+            entregas = [];
+            snapshot.forEach(doc => entregas.push({ ...doc.data(), firebaseId: doc.id }));
+            renderizarLista();
+            updateSyncStatus(true);
+        }, () => updateSyncStatus(false));
+
+        function iniciarTimers() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => renderizarLista(), 30000);
+        }
+        iniciarTimers();
+
+        window.calcularTroco = () => {
+            const vp = parseFloat(document.getElementById('valorPedido')?.value) || 0;
+            const tp = parseFloat(document.getElementById('trocoPara')?.value) || 0;
+            const info = document.getElementById('trocoInfo');
+            if (tp > vp && vp > 0) { info.textContent = '💰 Enviar R$ ' + (tp-vp).toFixed(2).replace('.',',') + ' de troco'; info.classList.add('active'); }
+            else info.classList.remove('active');
+        };
+
+        window.toggleTroco = () => {
+            const d = document.getElementById('dinheiro');
+            d
