@@ -93,7 +93,6 @@
         <p class="subtitle">Catanduva - SP</p>
         <p class="sync-status" id="syncStatus">🔄 Conectando...</p>
         
-        <!-- NOVA ENTREGA -->
         <div class="card">
             <h2>📸 Nova Entrega</h2>
             <div class="upload-area" id="uploadArea"><div>📤</div><p>Toque para adicionar imagem</p>
@@ -132,13 +131,11 @@
             <button class="btn btn-secondary btn-block" onclick="limparFormulario()">✕ Limpar</button>
         </div>
 
-        <!-- DASHBOARD -->
         <div class="dashboard">
             <div class="dash-item receber"><div class="number" id="pendente">R$ 0,00</div><div class="label">💸 A Receber (hoje)</div></div>
             <div class="dash-item recebido"><div class="number" id="recebido">R$ 0,00</div><div class="label">✅ Recebido (hoje)</div></div>
         </div>
 
-        <!-- LISTA DE ENTREGAS -->
         <div class="card">
             <h2>📋 Entregas - Minas</h2>
             <div id="resultsList"><p class="empty-state">Carregando...</p></div>
@@ -230,7 +227,6 @@
             }
         }
 
-        // Iniciar listener
         const q = query(collection(db, 'entregas_' + LOJA), orderBy('dataCriacao', 'desc'));
         onSnapshot(q, (snapshot) => {
             entregas = [];
@@ -255,4 +251,5 @@
 
         window.toggleTroco = () => {
             const d = document.getElementById('dinheiro');
-            d
+            document.getElementById('trocoField').classList.toggle('active', d?.checked);
+            if (!d?.checked) { document.get
