@@ -206,7 +206,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, query, orderBy, onSnapshot, getDocs, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
         
         const fb = initializeApp({ apiKey: "AIzaSyDJiTkxIwO5_Sh5AksXwmfWl0NnzmhMnqM", authDomain: "cacau-show-catanduva.firebaseapp.com", projectId: "cacau-show-catanduva", storageBucket: "cacau-show-catanduva.firebasestorage.app", messagingSenderId: "213727212413", appId: "1:213727212413:web:e63419fbec41dceb881214" });
         const db = getFirestore(fb);
@@ -299,6 +299,58 @@
             }
         }
 
+        // LIMPEZA AUTOMÁTICA DE ENTREGAS ANTIGAS
+        async function limparEntregasAntigas() {
+            const hojeInicio = hoje();
+            const camposParaRemover = [
+                'imagem', 'nome', 'endereco', 'complemento', 'bairro',
+                'entregarPara', 'entreguePara', 'pedidoAceito', 'entregaPrevista',
+                'dinheiro', 'cartao', 'trocoPara', 'trocoValor', 'idIfood', 'tempoEntrega'
+            ];
+            
+            for (const loja of LOJAS) {
+                const ref = collection(db, 'entregas_' + loja);
+                // Buscar documentos com dataCriacao anterior a hoje
+                const q = query(ref, where('dataCriacao', '<', hojeInicio.toISOString()));
+                const snapshot = await getDocs(q);
+                
+                const updates = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    // Verifica se ainda tem algum campo que precisa ser limpo (ex: imagem)
+                    const precisaLimpar = camposParaRemover.some(campo => data[campo] !== undefined && data[campo] !== null && data[campo] !== '');
+                    if (precisaLimpar) {
+                        // Cria um objeto com todos os campos a serem removidos (setando como deleteField())
+                        const updateObj = {};
+                        camposParaRemover.forEach(campo => {
+                            updateObj[campo] = deleteField();
+                        });
+                        updates.push(updateDoc(doc(db, 'entregas_' + loja, docSnap.id), updateObj));
+                    }
+                });
+                
+                if (updates.length > 0) {
+                    try {
+                        await Promise.all(updates);
+                        console.log(`Limpeza em ${loja}: ${updates.length} entregas atualizadas.`);
+                    } catch (err) {
+                        console.error('Erro na limpeza:', err);
+                    }
+                }
+            }
+        }
+        
+        // Função auxiliar para criar um valor de exclusão de campo no Firestore
+        function deleteField() {
+            // O Firestore não tem um "deleteField" nativo no SDK web modular v9+, 
+            // mas podemos usar a sentinela deleteField() importada de firebase/firestore.
+            // Como estamos usando import de todo o firestore, podemos usar a função deleteField diretamente.
+            return deleteFieldFromFirestore();
+        }
+        
+        // Vamos importar deleteField corretamente
+        import { deleteField as deleteFieldFromFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
         LOJAS.forEach(loja => {
             const q = query(collection(db, 'entregas_' + loja), orderBy('dataCriacao', 'desc'));
             onSnapshot(q, (snapshot) => {
@@ -318,6 +370,9 @@
             }, 30000);
         }
         iniciarTimers();
+
+        // Executa a limpeza ao iniciar
+        limparEntregasAntigas().then(() => console.log('Limpeza de entregas antigas concluída.'));
 
         function atualizarContadores() {
             const hojeInicio = hoje(), hojeFim = amanha();
@@ -591,4 +646,4 @@
         };
     </script>
 </body>
-                                                                                                                        </html>
+</html>
