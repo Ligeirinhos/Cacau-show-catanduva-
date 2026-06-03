@@ -8,6 +8,7 @@
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect fill='%23BF9D16' width='192' height='192' rx='25'/%3E%3Ctext y='.82em' font-size='100' x='50%25' text-anchor='middle'%3E🍫%3C/text%3E%3C/svg%3E">
     <meta name="theme-color" content="#352727">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         :root { --marrom: #352727; --dourado: #BF9D16; --creme: #F5F2EB; --marrom-escuro: #1f1616; --marrom-claro: #4a3838; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -54,6 +55,7 @@
         .btn-primary { background: var(--dourado); } .btn-primary:hover { background: #d4b020; }
         .btn-secondary { background: var(--marrom-escuro); color: var(--dourado); border: 1px solid var(--dourado); } .btn-secondary:hover { background: var(--marrom); }
         .btn-success { background: #27ae60; color: #fff; } .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-info { background: #3498db; color: #fff; }
         .btn-small { padding: 4px 10px; font-size: 0.75em; } .btn-block { width: 100%; margin: 4px 0; }
         .result-item { background: var(--marrom-escuro); padding: 10px; border-radius: 8px; margin-bottom: 6px; }
         .result-item.entregue { border-left: 4px solid #f39c12; } .result-item.recebido { border-left: 4px solid #27ae60; opacity: 0.9; }
@@ -100,6 +102,7 @@
         .consolidado-item { background: var(--marrom-escuro); padding: 12px; border-radius: 10px; text-align: center; border: 1px solid var(--dourado); }
         .consolidado-item .number { font-size: 1.8em; font-weight: bold; color: var(--dourado); }
         .consolidado-item .label { font-size: 0.8em; color: var(--creme); opacity: 0.8; margin-top: 3px; }
+        .ocr-loading { text-align: center; display: none; margin: 5px 0; }
     </style>
 </head>
 <body>
@@ -119,6 +122,8 @@
                 <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
             </div>
             <img id="preview" class="preview-img" alt="Preview" onclick="expandirFoto(this.src)">
+            <button class="btn btn-info btn-small btn-block" id="btnExtrair" onclick="extrairDadosOCR()" disabled>🔍 Extrair da Foto</button>
+            <div class="ocr-loading" id="ocrLoading">⏳ Processando OCR... <span id="ocrProgress">0%</span></div>
             <div class="form-grid">
                 <div class="form-group"><label>👤 Nome</label><input type="text" id="nome" placeholder="Nome do cliente (opcional)"></div>
                 <div class="form-group"><label>🆔 ID iFood</label><input type="text" id="idIfood" placeholder="Localizador (8 dígitos)"></div>
@@ -206,7 +211,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, query, orderBy, onSnapshot, getDocs, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
         
         const fb = initializeApp({ apiKey: "AIzaSyDJiTkxIwO5_Sh5AksXwmfWl0NnzmhMnqM", authDomain: "cacau-show-catanduva.firebaseapp.com", projectId: "cacau-show-catanduva", storageBucket: "cacau-show-catanduva.firebasestorage.app", messagingSenderId: "213727212413", appId: "1:213727212413:web:e63419fbec41dceb881214" });
         const db = getFirestore(fb);
@@ -299,58 +304,6 @@
             }
         }
 
-        // LIMPEZA AUTOMÁTICA DE ENTREGAS ANTIGAS
-        async function limparEntregasAntigas() {
-            const hojeInicio = hoje();
-            const camposParaRemover = [
-                'imagem', 'nome', 'endereco', 'complemento', 'bairro',
-                'entregarPara', 'entreguePara', 'pedidoAceito', 'entregaPrevista',
-                'dinheiro', 'cartao', 'trocoPara', 'trocoValor', 'idIfood', 'tempoEntrega'
-            ];
-            
-            for (const loja of LOJAS) {
-                const ref = collection(db, 'entregas_' + loja);
-                // Buscar documentos com dataCriacao anterior a hoje
-                const q = query(ref, where('dataCriacao', '<', hojeInicio.toISOString()));
-                const snapshot = await getDocs(q);
-                
-                const updates = [];
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    // Verifica se ainda tem algum campo que precisa ser limpo (ex: imagem)
-                    const precisaLimpar = camposParaRemover.some(campo => data[campo] !== undefined && data[campo] !== null && data[campo] !== '');
-                    if (precisaLimpar) {
-                        // Cria um objeto com todos os campos a serem removidos (setando como deleteField())
-                        const updateObj = {};
-                        camposParaRemover.forEach(campo => {
-                            updateObj[campo] = deleteField();
-                        });
-                        updates.push(updateDoc(doc(db, 'entregas_' + loja, docSnap.id), updateObj));
-                    }
-                });
-                
-                if (updates.length > 0) {
-                    try {
-                        await Promise.all(updates);
-                        console.log(`Limpeza em ${loja}: ${updates.length} entregas atualizadas.`);
-                    } catch (err) {
-                        console.error('Erro na limpeza:', err);
-                    }
-                }
-            }
-        }
-        
-        // Função auxiliar para criar um valor de exclusão de campo no Firestore
-        function deleteField() {
-            // O Firestore não tem um "deleteField" nativo no SDK web modular v9+, 
-            // mas podemos usar a sentinela deleteField() importada de firebase/firestore.
-            // Como estamos usando import de todo o firestore, podemos usar a função deleteField diretamente.
-            return deleteFieldFromFirestore();
-        }
-        
-        // Vamos importar deleteField corretamente
-        import { deleteField as deleteFieldFromFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
         LOJAS.forEach(loja => {
             const q = query(collection(db, 'entregas_' + loja), orderBy('dataCriacao', 'desc'));
             onSnapshot(q, (snapshot) => {
@@ -371,9 +324,6 @@
         }
         iniciarTimers();
 
-        // Executa a limpeza ao iniciar
-        limparEntregasAntigas().then(() => console.log('Limpeza de entregas antigas concluída.'));
-
         function atualizarContadores() {
             const hojeInicio = hoje(), hojeFim = amanha();
             LOJAS.forEach(loja => {
@@ -389,6 +339,79 @@
                 }
             });
         }
+
+        // Função OCR
+        window.extrairDadosOCR = async () => {
+            const previewImg = document.getElementById('preview');
+            if (!previewImg || !previewImg.src || previewImg.style.display === 'none') {
+                showToast('⚠️ Selecione uma imagem primeiro', true);
+                return;
+            }
+            const btn = document.getElementById('btnExtrair');
+            btn.disabled = true;
+            document.getElementById('ocrLoading').style.display = 'block';
+            document.getElementById('ocrProgress').textContent = '0%';
+            
+            try {
+                const { data: { text } } = await Tesseract.recognize(previewImg.src, 'por+eng', {
+                    logger: (m) => {
+                        if (m.status === 'recognizing text') {
+                            document.getElementById('ocrProgress').textContent = Math.round(m.progress * 100) + '%';
+                        }
+                    }
+                });
+                
+                // Processar o texto extraído
+                const linhas = text.split('\n').map(l => l.trim());
+                
+                // ID iFood
+                const idMatch = text.match(/Localizador:\s*(\d{4}\s*\d{4})/i) || text.match(/(\d{4})\s*(\d{4})/);
+                if (idMatch) {
+                    const id = idMatch[1].replace(/\s/g, '');
+                    document.getElementById('idIfood').value = id.substring(0,4) + ' ' + id.substring(4);
+                }
+                
+                // Nome: linha antes de "0800"
+                for (let i = 0; i < linhas.length; i++) {
+                    if (linhas[i].startsWith('0800') && i > 0) {
+                        for (let j = i-1; j >= 0; j--) {
+                            if (linhas[j] && !linhas[j].startsWith('Primeiro') && !linhas[j].startsWith('Localizador')) {
+                                document.getElementById('nome').value = linhas[j];
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+                
+                // Endereço
+                const ruaMatch = text.match(/(?:Endereço|Endereco)[:\s]+([^\n]+)/i);
+                if (ruaMatch) document.getElementById('endereco').value = ruaMatch[1].trim();
+                
+                // Complemento
+                const compMatch = text.match(/Comp[:\s]+([^\n]+)/i);
+                if (compMatch) document.getElementById('complemento').value = compMatch[1].trim();
+                
+                // Bairro
+                const bairroMatch = text.match(/Bairro[:\s]+([^\n]+)/i);
+                if (bairroMatch) document.getElementById('bairro').value = bairroMatch[1].trim();
+                
+                // Data (Pedido aceito)
+                const dataMatch = text.match(/Data:\s*([^\n]+)/i);
+                if (dataMatch) document.getElementById('pedidoAceito').value = dataMatch[1].trim();
+                
+                // Previsão
+                const prevMatch = text.match(/Entrega prevista:\s*([^\n]+)/i);
+                if (prevMatch) document.getElementById('entregaPrevista').value = prevMatch[1].trim();
+                
+                showToast('✅ Dados extraídos! Revise antes de salvar.');
+            } catch (error) {
+                showToast('❌ Erro no OCR: ' + error.message, true);
+            } finally {
+                document.getElementById('ocrLoading').style.display = 'none';
+                btn.disabled = false;
+            }
+        };
 
         window.calcularTroco = () => {
             const vp = parseFloat(document.getElementById('valorPedido')?.value) || 0;
@@ -419,8 +442,11 @@
                     c.getContext('2d').drawImage(img,0,0,w,h);
                     imagemAtual = c.toDataURL('image/jpeg',0.5);
                     const p = document.getElementById('preview'); p.src=imagemAtual; p.style.display='block';
-                }; img.src = e.target.result;
-            }; reader.readAsDataURL(file);
+                    document.getElementById('btnExtrair').disabled = false;
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
         };
 
         window.expandirFoto = (src) => { document.getElementById('fotoExpandida').src=src; document.getElementById('fotoFullscreen').classList.add('active'); };
@@ -463,8 +489,6 @@
                 tempoEntrega: null
             };
             
-            // Permite salvar sem nome do cliente
-            
             try {
                 for(const loja of lojasSelecionadas) {
                     await addDoc(collection(db,'entregas_'+loja), e);
@@ -483,6 +507,8 @@
             document.getElementById('trocoField').classList.remove('active');
             document.getElementById('trocoInfo').classList.remove('active');
             imagemAtual=null; document.getElementById('preview').style.display='none'; document.getElementById('fileInput').value='';
+            document.getElementById('btnExtrair').disabled = true;
+            document.getElementById('ocrLoading').style.display = 'none';
         };
 
         window.toggleEntregue = (loja, firebaseId) => {
@@ -570,10 +596,7 @@
                 const timerHTML = timer.texto ? `<span class="timer ${timer.classe}">${timer.texto}</span>` : '';
                 const tempoFormatado = e.tempoEntrega ? formatarTempo(e.tempoEntrega) : '';
                 const tempoHTML = tempoFormatado ? `<span class="tempo-entrega">⏱ ${tempoFormatado}</span>` : '';
-                
-                // Exibe o nome do cliente ou, se vazio, o endereço ou "Presente"
                 const nomeExibido = e.nome && e.nome !== 'Não informado' ? e.nome : (e.entregarPara || e.endereco || '🎁 Presente');
-                
                 return `
                 <div class="result-item ${e.entregue?'entregue':''} ${e.recebido?'recebido':''}">
                     <div class="result-header"><div class="result-info">
@@ -646,4 +669,4 @@
         };
     </script>
 </body>
-</html>
+    </html>
