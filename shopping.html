@@ -8,6 +8,7 @@
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect fill='%23BF9D16' width='192' height='192' rx='25'/%3E%3Ctext y='.82em' font-size='100' x='50%25' text-anchor='middle'%3E🍫%3C/text%3E%3C/svg%3E">
     <meta name="theme-color" content="#352727">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         :root { --marrom: #352727; --dourado: #BF9D16; --creme: #F5F2EB; --marrom-escuro: #1f1616; --marrom-claro: #4a3838; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -46,6 +47,7 @@
         .btn-primary { background: var(--dourado); } .btn-primary:hover { background: #d4b020; }
         .btn-secondary { background: var(--marrom-escuro); color: var(--dourado); border: 1px solid var(--dourado); } .btn-secondary:hover { background: var(--marrom); }
         .btn-success { background: #27ae60; color: #fff; } .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-info { background: #3498db; color: #fff; }
         .btn-small { padding: 4px 10px; font-size: 0.75em; } .btn-block { width: 100%; margin: 4px 0; }
         .result-item { background: var(--marrom-escuro); padding: 10px; border-radius: 8px; margin-bottom: 6px; }
         .result-item.entregue { border-left: 4px solid #f39c12; } .result-item.recebido { border-left: 4px solid #27ae60; opacity: 0.9; }
@@ -85,6 +87,7 @@
         .edit-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
         .edit-row input { width: 100%; background: var(--marrom); border: 1px solid var(--dourado); border-radius: 6px; color: var(--creme); padding: 5px 7px; font-size: 0.8em; }
         .edit-row label { font-size: 0.7em; color: var(--dourado); display: block; margin-bottom: 2px; }
+        .ocr-loading { text-align: center; display: none; margin: 5px 0; }
     </style>
 </head>
 <body>
@@ -103,6 +106,8 @@
                 <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
             </div>
             <img id="preview" class="preview-img" alt="Preview" onclick="expandirFoto(this.src)">
+            <button class="btn btn-info btn-small btn-block" id="btnExtrair" onclick="extrairDadosOCR()" disabled>🔍 Extrair da Foto</button>
+            <div class="ocr-loading" id="ocrLoading">⏳ Processando OCR... <span id="ocrProgress">0%</span></div>
             <div class="form-grid">
                 <div class="form-group"><label>👤 Nome</label><input type="text" id="nome" placeholder="Nome do cliente (opcional)"></div>
                 <div class="form-group"><label>🆔 ID iFood</label><input type="text" id="idIfood" placeholder="Localizador (8 dígitos)"></div>
@@ -241,6 +246,78 @@
         }
         iniciarTimers();
 
+        // Função OCR
+        window.extrairDadosOCR = async () => {
+            const previewImg = document.getElementById('preview');
+            if (!previewImg || !previewImg.src || previewImg.style.display === 'none') {
+                showToast('⚠️ Selecione uma imagem primeiro', true);
+                return;
+            }
+            const btn = document.getElementById('btnExtrair');
+            btn.disabled = true;
+            document.getElementById('ocrLoading').style.display = 'block';
+            document.getElementById('ocrProgress').textContent = '0%';
+            
+            try {
+                const { data: { text } } = await Tesseract.recognize(previewImg.src, 'por+eng', {
+                    logger: (m) => {
+                        if (m.status === 'recognizing text') {
+                            document.getElementById('ocrProgress').textContent = Math.round(m.progress * 100) + '%';
+                        }
+                    }
+                });
+                
+                const linhas = text.split('\n').map(l => l.trim());
+                
+                // ID iFood
+                const idMatch = text.match(/Localizador:\s*(\d{4}\s*\d{4})/i) || text.match(/(\d{4})\s*(\d{4})/);
+                if (idMatch) {
+                    const id = idMatch[1].replace(/\s/g, '');
+                    document.getElementById('idIfood').value = id.substring(0,4) + ' ' + id.substring(4);
+                }
+                
+                // Nome: linha antes de "0800"
+                for (let i = 0; i < linhas.length; i++) {
+                    if (linhas[i].startsWith('0800') && i > 0) {
+                        for (let j = i-1; j >= 0; j--) {
+                            if (linhas[j] && !linhas[j].startsWith('Primeiro') && !linhas[j].startsWith('Localizador')) {
+                                document.getElementById('nome').value = linhas[j];
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+                
+                // Endereço
+                const ruaMatch = text.match(/(?:Endereço|Endereco)[:\s]+([^\n]+)/i);
+                if (ruaMatch) document.getElementById('endereco').value = ruaMatch[1].trim();
+                
+                // Complemento
+                const compMatch = text.match(/Comp[:\s]+([^\n]+)/i);
+                if (compMatch) document.getElementById('complemento').value = compMatch[1].trim();
+                
+                // Bairro
+                const bairroMatch = text.match(/Bairro[:\s]+([^\n]+)/i);
+                if (bairroMatch) document.getElementById('bairro').value = bairroMatch[1].trim();
+                
+                // Data (Pedido aceito)
+                const dataMatch = text.match(/Data:\s*([^\n]+)/i);
+                if (dataMatch) document.getElementById('pedidoAceito').value = dataMatch[1].trim();
+                
+                // Previsão
+                const prevMatch = text.match(/Entrega prevista:\s*([^\n]+)/i);
+                if (prevMatch) document.getElementById('entregaPrevista').value = prevMatch[1].trim();
+                
+                showToast('✅ Dados extraídos! Revise antes de salvar.');
+            } catch (error) {
+                showToast('❌ Erro no OCR: ' + error.message, true);
+            } finally {
+                document.getElementById('ocrLoading').style.display = 'none';
+                btn.disabled = false;
+            }
+        };
+
         window.calcularTroco = () => {
             const vp = parseFloat(document.getElementById('valorPedido')?.value) || 0;
             const tp = parseFloat(document.getElementById('trocoPara')?.value) || 0;
@@ -270,6 +347,7 @@
                     c.getContext('2d').drawImage(img,0,0,w,h);
                     imagemAtual = c.toDataURL('image/jpeg',0.5);
                     document.getElementById('preview').src=imagemAtual; document.getElementById('preview').style.display='block';
+                    document.getElementById('btnExtrair').disabled = false;
                 }; img.src = e.target.result;
             }; reader.readAsDataURL(file);
         };
@@ -309,6 +387,8 @@
             document.getElementById('trocoField').classList.remove('active');
             document.getElementById('trocoInfo').classList.remove('active');
             imagemAtual=null; document.getElementById('preview').style.display='none'; document.getElementById('fileInput').value='';
+            document.getElementById('btnExtrair').disabled = true;
+            document.getElementById('ocrLoading').style.display = 'none';
         };
 
         window.toggleEntregue = (firebaseId) => {
