@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Imagens - Cacau Show</title>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDJiTkxIwO5_Sh5AksXwmfWl0NnzmhMnqM",
+            authDomain: "cacau-show-catanduva.firebaseapp.com",
+            projectId: "cacau-show-catanduva",
+            storageBucket: "cacau-show-catanduva.firebasestorage.app",
+            messagingSenderId: "213727212413",
+            appId: "1:213727212413:web:e63419fbec41dceb881214"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        const lojas = ['minas', 'shopping', 'proenca'];
+        const nomesLojas = { minas: '🏪 Minas', shopping: '🛍 Shopping', proenca: '🏘 Proença' };
+        
+        async function carregarImagens(loja) {
+            const container = document.getElementById('imagens');
+            container.innerHTML = '<p style="text-align:center;color:#BF9D16;">Carregando imagens...</p>';
+            
+            try {
+                const q = query(collection(db, 'entregas_' + loja), orderBy('dataCriacao', 'desc'));
+                const snapshot = await getDocs(q);
+                
+                const entregasComImagem = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.imagem) {
+                        entregasComImagem.push(data);
+                    }
+                });
+                
+                if (entregasComImagem.length === 0) {
+                    container.innerHTML = '<p style="text-align:center;color:#aaa;">Nenhuma imagem encontrada nesta loja.</p>';
+                    return;
+                }
+                
+                container.innerHTML = entregasComImagem.map(e => `
+                    <div style="background:#1f1616; padding:12px; border-radius:10px; margin-bottom:10px; border:1px solid #BF9D16;">
+                        <img src="${e.imagem}" style="width:100%; border-radius:8px; margin-bottom:8px;" onclick="window.open('${e.imagem}')" title="Clique para ampliar">
+                        <p style="color:#BF9D16; margin:0;"><strong>${e.nome || e.entregarPara || 'Sem nome'}</strong></p>
+                        <p style="color:#aaa; margin:2px 0; font-size:0.8em;">📍 ${e.endereco || 'N/A'} - ${e.bairro || 'N/A'}</p>
+                        <p style="color:#aaa; margin:2px 0; font-size:0.8em;">💰 R$ ${(e.valorEntrega||0).toFixed(2).replace('.', ',')}</p>
+                        <p style="color:#aaa; margin:2px 0; font-size:0.8em;">📅 ${new Date(e.dataCriacao).toLocaleString('pt-BR')}</p>
+                        ${e.entregue ? '<span style="background:#f39c12;color:#000;padding:2px 6px;border-radius:8px;font-size:0.7em;">📦 Entregue</span>' : ''}
+                        ${e.recebido ? '<span style="background:#27ae60;color:#fff;padding:2px 6px;border-radius:8px;font-size:0.7em;margin-left:4px;">💰 Recebido</span>' : ''}
+                    </div>
+                `).join('');
+                
+                document.getElementById('contador').textContent = `${entregasComImagem.length} imagens encontradas`;
+                
+            } catch (error) {
+                container.innerHTML = `<p style="color:#e74c3c;">Erro: ${error.message}</p>`;
+            }
+        }
+        
+        // Expor funções globalmente
+        window.mudarLoja = (loja) => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + loja).classList.add('active');
+            carregarImagens(loja);
+        };
+        
+        // Carregar Minas por padrão
+        window.addEventListener('DOMContentLoaded', () => {
+            carregarImagens('minas');
+        });
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #352727; color: #F5F2EB; padding: 15px; margin: 0; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { text-align: center; color: #BF9D16; margin-bottom: 5px; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 15px; }
+        .tab { flex:1; padding: 10px; background:#1f1616; border:none; color:#F5F2EB; border-radius:8px; cursor:pointer; font-size:0.8em; }
+        .tab.active { background:#BF9D16; color:#352727; font-weight:bold; }
+        #contador { text-align:center; color:#aaa; font-size:0.8em; margin-bottom:10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼 Visualizador de Imagens</h1>
+        <p style="text-align:center;color:#aaa;font-size:0.8em;">Cacau Show - Catanduva</p>
+        
+        <div class="tabs">
+            <button class="tab active" id="tab-minas" onclick="mudarLoja('minas')">🏪 Minas</button>
+            <button class="tab" id="tab-shopping" onclick="mudarLoja('shopping')">🛍 Shopping</button>
+            <button class="tab" id="tab-proenca" onclick="mudarLoja('proenca')">🏘 Proença</button>
+        </div>
+        
+        <div id="contador"></div>
+        <div id="imagens"></div>
+    </div>
+</body>
+</html>
