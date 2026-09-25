@@ -20,8 +20,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         
-        const lojas = ['minas', 'shopping', 'proenca'];
-        const nomesLojas = { minas: '🏪 Minas', shopping: '🛍 Shopping', proenca: '🏘 Proença' };
+        let entregasAtuais = [];
         
         async function carregarImagens(loja) {
             const container = document.getElementById('imagens');
@@ -31,46 +30,97 @@
                 const q = query(collection(db, 'entregas_' + loja), orderBy('dataCriacao', 'desc'));
                 const snapshot = await getDocs(q);
                 
-                const entregasComImagem = [];
+                entregasAtuais = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     if (data.imagem) {
-                        entregasComImagem.push(data);
+                        entregasAtuais.push({ ...data, _id: doc.id });
                     }
                 });
                 
-                if (entregasComImagem.length === 0) {
+                if (entregasAtuais.length === 0) {
                     container.innerHTML = '<p style="text-align:center;color:#aaa;">Nenhuma imagem encontrada nesta loja.</p>';
+                    document.getElementById('contador').textContent = '';
                     return;
                 }
                 
-                container.innerHTML = entregasComImagem.map(e => `
+                container.innerHTML = entregasAtuais.map((e, idx) => `
                     <div style="background:#1f1616; padding:12px; border-radius:10px; margin-bottom:10px; border:1px solid #BF9D16;">
-                        <img src="${e.imagem}" style="width:100%; border-radius:8px; margin-bottom:8px;" onclick="window.open('${e.imagem}')" title="Clique para ampliar">
+                        <img src="${e.imagem}" style="width:100%; border-radius:8px; margin-bottom:8px; cursor:pointer;" onclick="ampliarImagem('${idx}')" title="Clique para ampliar">
                         <p style="color:#BF9D16; margin:0;"><strong>${e.nome || e.entregarPara || 'Sem nome'}</strong></p>
                         <p style="color:#aaa; margin:2px 0; font-size:0.8em;">📍 ${e.endereco || 'N/A'} - ${e.bairro || 'N/A'}</p>
                         <p style="color:#aaa; margin:2px 0; font-size:0.8em;">💰 R$ ${(e.valorEntrega||0).toFixed(2).replace('.', ',')}</p>
                         <p style="color:#aaa; margin:2px 0; font-size:0.8em;">📅 ${new Date(e.dataCriacao).toLocaleString('pt-BR')}</p>
+                        ${e.idIfood ? `<p style="color:#aaa; margin:2px 0; font-size:0.8em;">🆔 ${e.idIfood}</p>` : ''}
                         ${e.entregue ? '<span style="background:#f39c12;color:#000;padding:2px 6px;border-radius:8px;font-size:0.7em;">📦 Entregue</span>' : ''}
                         ${e.recebido ? '<span style="background:#27ae60;color:#fff;padding:2px 6px;border-radius:8px;font-size:0.7em;margin-left:4px;">💰 Recebido</span>' : ''}
+                        <div style="margin-top:10px; display:flex; gap:6px;">
+                            <button onclick="copiarDados(${idx})" style="flex:1; background:#BF9D16; color:#352727; border:none; padding:8px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.85em;">📋 Copiar Dados</button>
+                        </div>
                     </div>
                 `).join('');
                 
-                document.getElementById('contador').textContent = `${entregasComImagem.length} imagens encontradas`;
+                document.getElementById('contador').textContent = `${entregasAtuais.length} imagens encontradas`;
                 
             } catch (error) {
                 container.innerHTML = `<p style="color:#e74c3c;">Erro: ${error.message}</p>`;
             }
         }
         
-        // Expor funções globalmente
         window.mudarLoja = (loja) => {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.getElementById('tab-' + loja).classList.add('active');
             carregarImagens(loja);
         };
         
-        // Carregar Minas por padrão
+        window.copiarDados = (idx) => {
+            const e = entregasAtuais[idx];
+            if (!e) return;
+            
+            const texto = 
+`Nome: ${e.nome || e.entregarPara || ''}
+Endereço: ${e.endereco || ''}
+Complemento: ${e.complemento || ''}
+Apelido: 1
+Telefone: 
+Código Ifood: ${e.idIfood || ''}
+Grupo: Cacau show
+Valor: ${(e.valorEntrega||0).toFixed(2).replace('.', ',')}`;
+            
+            navigator.clipboard.writeText(texto).then(() => {
+                mostrarToast('📋 Dados copiados!');
+            }).catch(() => {
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = texto;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                mostrarToast('📋 Dados copiados!');
+            });
+        };
+        
+        window.ampliarImagem = (idx) => {
+            const e = entregasAtuais[idx];
+            if (!e || !e.imagem) return;
+            const modal = document.getElementById('modalImagem');
+            document.getElementById('imagemAmpliada').src = e.imagem;
+            modal.classList.add('active');
+        };
+        
+        window.fecharModal = () => {
+            document.getElementById('modalImagem').classList.remove('active');
+        };
+        
+        function mostrarToast(msg) {
+            const t = document.createElement('div');
+            t.textContent = msg;
+            t.style.cssText = 'position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#27ae60; color:#fff; padding:12px 22px; border-radius:10px; font-weight:bold; z-index:9999; box-shadow:0 4px 15px rgba(0,0,0,0.4);';
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 2000);
+        }
+        
         window.addEventListener('DOMContentLoaded', () => {
             carregarImagens('minas');
         });
@@ -83,6 +133,9 @@
         .tab { flex:1; padding: 10px; background:#1f1616; border:none; color:#F5F2EB; border-radius:8px; cursor:pointer; font-size:0.8em; }
         .tab.active { background:#BF9D16; color:#352727; font-weight:bold; }
         #contador { text-align:center; color:#aaa; font-size:0.8em; margin-bottom:10px; }
+        #modalImagem { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9999; justify-content:center; align-items:center; cursor:pointer; }
+        #modalImagem.active { display:flex; }
+        #imagemAmpliada { max-width:95%; max-height:95%; border-radius:12px; }
     </style>
 </head>
 <body>
@@ -98,6 +151,10 @@
         
         <div id="contador"></div>
         <div id="imagens"></div>
+    </div>
+    
+    <div id="modalImagem" onclick="fecharModal()">
+        <img id="imagemAmpliada" src="" alt="Imagem ampliada">
     </div>
 </body>
 </html>
